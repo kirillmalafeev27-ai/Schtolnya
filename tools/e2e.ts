@@ -12,6 +12,8 @@ const seed = process.argv[4] ?? '12345';
 const width = +(process.argv[5] ?? 390);
 const height = +(process.argv[6] ?? 844);
 const mode = process.argv[7] ?? 'mouse';
+/** «menu» — начать с обложки и нажать «Играть», как настоящий игрок. */
+const flow = process.argv[8] ?? 'direct';
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 async function readState(page: Page): Promise<GameState | null> {
@@ -61,7 +63,15 @@ async function main() {
   page.on('console', (m) => {
     if (m.type() === 'error' || m.type() === 'warning') errors.push(`[${m.type()}] ${m.text()}`);
   });
-  await page.goto(`${url}?test&level=${level}&seed=${seed}`);
+  if (flow === 'menu') {
+    await page.goto(`${url}?test&seed=${seed}`);
+    await page.waitForSelector('.menu__play', { timeout: 60000 });
+    await page.waitForTimeout(400);
+    if (mode === 'touch') {
+      const b = await page.locator('.menu__play').boundingBox();
+      await page.touchscreen.tap(b!.x + b!.width / 2, b!.y + b!.height / 2);
+    } else await page.click('.menu__play');
+  } else await page.goto(`${url}?test&level=${level}&seed=${seed}`);
   await page.waitForFunction(
     () => !!(window as unknown as { mine?: { app: { round: unknown } } }).mine?.app.round,
     null,
@@ -70,6 +80,7 @@ async function main() {
   const mem = newMemory();
   let answers = 0;
   let actions = 0;
+  let tutorials = 0;
   const t0 = Date.now();
   let last: GameState | null = null;
   while (Date.now() - t0 < 6 * 60 * 1000) {
@@ -77,6 +88,12 @@ async function main() {
     if (!s) break;
     last = s;
     if (s.status !== 'playing') break;
+    if (await page.locator('.bubble__ok').count()) {
+      tutorials++;
+      await page.click('.bubble__ok');
+      await page.waitForTimeout(200);
+      continue;
+    }
     if (s.paused) {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(200);
@@ -120,6 +137,7 @@ async function main() {
       stars: last?.stars,
       answers,
       actions,
+      tutorials,
       gameTime: last?.time.toFixed(1),
       results: await page.locator('.results').count(),
       audio: await page.evaluate(() => {

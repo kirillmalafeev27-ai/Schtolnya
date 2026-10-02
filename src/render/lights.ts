@@ -41,7 +41,7 @@ export interface LightFrame {
 }
 
 export class LightRig {
-  readonly filter: ComicLight | null;
+  filter: ComicLight | null;
   private readonly maskKey: string;
   private maskCanvas: HTMLCanvasElement;
   private flashes: Flash[] = [];
@@ -51,10 +51,12 @@ export class LightRig {
   private readonly glows: Phaser.GameObjects.Image[] = [];
   private vignetteImg: Phaser.GameObjects.Image | null = null;
   reduced = false;
+  /** Сколько источников света в последнем кадре (отладочная панель). */
+  lastCount = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
-    layers: WorldLayers,
+    private readonly layers: WorldLayers,
     state: GameState,
     useFilter: boolean,
     uid: string,
@@ -93,15 +95,30 @@ export class LightRig {
       scene.cameras.main.filters.internal.add(this.filter);
     } else {
       this.filter = null;
-      // Запасной путь: края затемняет текстура виньетки, свечения — аддитивными спрайтами.
-      for (let i = 0; i < 12; i++) {
-        const g = scene.add.image(0, 0, ART.glowSoft).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
-        layers.fx.add(g);
-        this.glows.push(g);
-      }
-      this.vignetteImg = scene.add.image(0, 0, ART.vignette).setOrigin(0.5, 0.5).setAlpha(0.85);
-      layers.fx.add(this.vignetteImg);
+      this.buildFallback();
     }
+  }
+
+  /** Запасной путь (8.5): края затемняет текстура виньетки, свечения — аддитивными спрайтами. */
+  private buildFallback(): void {
+    for (let i = 0; i < 12; i++) {
+      const g = this.scene.add
+        .image(0, 0, ART.glowSoft)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setVisible(false);
+      this.layers.fx.add(g);
+      this.glows.push(g);
+    }
+    this.vignetteImg = this.scene.add.image(0, 0, ART.vignette).setOrigin(0.5, 0.5).setAlpha(0.85);
+    this.layers.fx.add(this.vignetteImg);
+  }
+
+  /** Снять световой фильтр посреди раунда (автоснижение качества, 13.6.4). */
+  disableFilter(): void {
+    if (!this.filter) return;
+    this.scene.cameras.main.filters.internal.remove(this.filter);
+    this.filter = null;
+    this.buildFallback();
   }
 
   private drawMask(s: GameState): void {
@@ -286,6 +303,7 @@ export class LightRig {
       }
     }
 
+    this.lastCount = Math.min(lights.length, L.maxLights);
     if (this.filter) {
       this.filter.lights = lights;
       this.filter.vignette = [bad[0] * 0.55, bad[1] * 0.08, bad[2] * 0.1, vig];

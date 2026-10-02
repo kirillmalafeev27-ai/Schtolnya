@@ -14,6 +14,21 @@ export const ru = {
   locked: 'Закрыто',
   levelLockedHint: 'Пройди предыдущий уровень хотя бы на одну звезду',
 
+  menu: {
+    issue: 'Выпуск 1',
+    tagline: 'Отвечай на вопросы — веди горняка к жиле',
+    continue: (n: number) => `Уровень ${n}`,
+  },
+
+  levelSelect: {
+    title: 'Выбери забой',
+    best: (n: number) => `Рекорд: ${n}`,
+    noBest: 'Ещё не пройден',
+    starsLabel: (n: number) => `Звёзд: ${n} из 3`,
+  },
+
+  loadingTipTitle: 'Факт из шахты',
+
   answer: {
     step: 'Ответ — шаг',
     plant: 'Ответ — заложить шашку',
@@ -95,6 +110,21 @@ export const ru = {
     sfxLangDe: 'Немецкие',
     sfxLangRu: 'Русские',
     autoLowQuality: 'Качество снижено автоматически: игра шла медленно',
+    qualityNextRound: 'Чёткость текстур сменится со следующего раунда',
+    on: 'Вкл',
+    off: 'Выкл',
+    done: 'Готово',
+  },
+
+  debug: {
+    title: 'Отладка',
+    grid: 'Сетка',
+    koboldPath: 'Путь кобольда',
+    sleep: 'Усыпить кобольда',
+    wake: 'Разбудить кобольда',
+    immortal: 'Бессмертие',
+    sticks: '+5 шашек',
+    crosses: 'Кресты всех пород',
   },
 
   tutorial: {

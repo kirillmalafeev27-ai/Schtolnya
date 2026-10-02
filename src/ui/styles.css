@@ -1089,7 +1089,7 @@
   width: max-content;
   text-wrap: balance;
   padding: 8px 14px;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 18px;
   line-height: 1.2;
   text-align: center;
@@ -1155,4 +1155,809 @@
     transform: translateY(-18px) scale(0.9);
     opacity: 0;
   }
+}
+
+/* ───────────── Меню-обложка (11.5.1) ───────────── */
+
+.mine.mine--menu .mine__page {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.mine--menu .mine__quiz,
+.mine--menu .gear,
+.mine--menu .mine__pause {
+  display: none;
+}
+
+.cover-title {
+  display: grid;
+  margin: 0;
+  font-weight: 900;
+  font-size: clamp(64px, 17vmin, 150px);
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  transform: rotate(-4deg) skewX(-7deg);
+}
+
+.cover-title > span {
+  grid-area: 1 / 1;
+}
+
+/* Выдавка: тушь со ступенчатой тенью вниз-вправо. */
+.cover-title__back {
+  color: var(--ink);
+  -webkit-text-stroke: 0.11em var(--ink);
+  text-shadow:
+    0.02em 0.02em 0 var(--ink),
+    0.04em 0.04em 0 var(--ink),
+    0.06em 0.06em 0 var(--ink),
+    0.08em 0.08em 0 var(--ink),
+    0.1em 0.1em 0 var(--ink),
+    0.15em 0.16em 0 var(--ink-55);
+}
+
+/* Лицо: три полосы золота, как литой металл в комиксе. */
+.cover-title__front {
+  color: transparent;
+  background: linear-gradient(
+    176deg,
+    var(--gold-light) 0 34%,
+    var(--caption) 34% 60%,
+    var(--gold) 60% 82%,
+    var(--gold-shadow) 82%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(var(--gutter) + 18px) calc(var(--gutter) + 16px) calc(var(--gutter) + 22px);
+  pointer-events: auto;
+  background:
+    linear-gradient(180deg, var(--ink-70) 0%, transparent 42%),
+    linear-gradient(0deg, var(--ink-70) 0%, transparent 34%);
+  animation: menu-in 420ms ease-out both;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.menu__mast {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+}
+
+.menu__issue {
+  align-self: flex-start;
+  margin: 0 0 6px -6px;
+  padding: 3px 9px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--panel);
+  background: var(--ink);
+  border: 2px solid var(--panel);
+  transform: rotate(-4deg);
+}
+
+.menu__subtitle {
+  font-size: clamp(28px, 6.4vmin, 56px);
+  line-height: 1;
+  color: var(--panel);
+  -webkit-text-stroke: 0.16em var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0.08em 0.1em 0 var(--ink);
+  transform: rotate(-3deg);
+}
+
+/* Наклейка-звезда «Glück auf!»: двойная звезда даёт обводку тушью. */
+.menu__sub-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0.1em;
+}
+
+.menu__burst {
+  position: relative;
+  flex: none;
+  margin: -8px -24px 0 0;
+  width: clamp(78px, 16vmin, 112px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  clip-path: polygon(
+    50% 0%,
+    59% 18%,
+    79% 9%,
+    77% 30%,
+    98% 32%,
+    84% 49%,
+    100% 64%,
+    79% 69%,
+    83% 90%,
+    63% 82%,
+    50% 100%,
+    38% 82%,
+    17% 91%,
+    21% 69%,
+    0% 64%,
+    16% 49%,
+    2% 32%,
+    23% 30%,
+    21% 9%,
+    41% 18%
+  );
+  transform: rotate(12deg);
+  animation: burst-pulse 2.4s ease-in-out infinite;
+}
+
+.menu__burst::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  background: var(--caption);
+  clip-path: inherit;
+}
+
+.menu__burst span {
+  position: relative;
+  max-width: 70%;
+  font-size: clamp(16px, 3.6vmin, 22px);
+  line-height: 0.95;
+  text-align: center;
+  color: var(--ink);
+  transform: rotate(-8deg);
+}
+
+@keyframes burst-pulse {
+  0%,
+  100% {
+    transform: rotate(12deg) scale(1);
+  }
+  50% {
+    transform: rotate(9deg) scale(1.07);
+  }
+}
+
+/* Искорки вокруг названия. */
+.menu__glint {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 22px;
+  height: 22px;
+  background: var(--panel);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  animation: glint 3.2s ease-in-out var(--d) infinite;
+  opacity: 0;
+}
+
+@keyframes glint {
+  0%,
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(0.2) rotate(0);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1.2) rotate(45deg);
+  }
+  90% {
+    opacity: 0.6;
+    transform: scale(0.7) rotate(90deg);
+  }
+}
+
+.menu__bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.menu__tagline {
+  margin: 0;
+  padding: 6px 12px;
+  max-width: 420px;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.25;
+  text-align: center;
+  background: var(--caption);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: rotate(-1.5deg);
+}
+
+.menu__buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn--big {
+  position: relative;
+  min-height: 64px;
+  padding: 10px 44px;
+  font-size: 28px;
+  font-weight: 900;
+  overflow: hidden;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.btn--big:active {
+  transform: translate(6px, 6px);
+}
+
+/* Блик бежит по главной кнопке. */
+.btn--big::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  width: 34%;
+  left: -50%;
+  background: linear-gradient(100deg, transparent, var(--panel-90) 45%, transparent 60%);
+  transform: skewX(-18deg);
+  animation: shine 3.4s ease-in-out 1s infinite;
+  pointer-events: none;
+}
+
+@keyframes shine {
+  0%,
+  62% {
+    left: -50%;
+  }
+  86%,
+  100% {
+    left: 130%;
+  }
+}
+
+.mine--reduced .menu__burst,
+.mine--reduced .menu__glint,
+.mine--reduced .btn--big::after {
+  animation: none;
+}
+
+/* ───────────── Выбор уровня (11.5.2) ───────────── */
+
+.levels {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: calc(var(--gutter) + 12px);
+  pointer-events: auto;
+  background: var(--ink-55);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: menu-in 260ms ease-out both;
+}
+
+.levels__page {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.levels__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.levels__title {
+  margin: 0;
+  font-weight: 900;
+  font-size: clamp(26px, 5vmin, 40px);
+  color: var(--caption);
+  -webkit-text-stroke: 0.14em var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0.06em 0.08em 0 var(--ink);
+  transform: rotate(-2deg);
+}
+
+.levels__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(46%, 200px), 1fr));
+  gap: 16px;
+}
+
+.levels__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'num stars'
+    'name name'
+    'best best';
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 118px;
+  padding: 12px 12px 10px;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--panel);
+  border: 4px solid var(--ink);
+  box-shadow:
+    0 0 0 3px var(--panel),
+    6px 7px 0 3px var(--ink);
+  cursor: pointer;
+  transform: rotate(calc((var(--i) - 3) * 0.35deg));
+  animation: card-in 300ms cubic-bezier(0.3, 1.6, 0.5, 1) calc(var(--i) * 45ms) both;
+  transition: transform 120ms;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .levels__card:not(.is-locked):hover {
+    transform: translateY(-3px) rotate(-1deg);
+  }
+}
+
+.levels__card:focus-visible {
+  outline: 4px solid var(--caption);
+  outline-offset: 4px;
+}
+
+.levels__num {
+  grid-area: num;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--caption);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: rotate(-8deg);
+}
+
+.levels__name {
+  grid-area: name;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.15;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+.levels__stars {
+  grid-area: stars;
+  display: flex;
+  gap: 2px;
+}
+
+.levels__stars svg {
+  width: 26px;
+  height: 26px;
+}
+
+.levels__best {
+  grid-area: best;
+  min-width: 0;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.levels__card.is-endless .levels__num {
+  background: var(--gold-light);
+}
+
+.levels__card.is-locked {
+  cursor: default;
+  background: var(--chalk);
+  filter: saturate(0.2);
+}
+
+.levels__card.is-locked > :not(.levels__lock):not(.levels__best) {
+  opacity: 0.35;
+}
+
+.levels__card.is-locked .levels__stars {
+  display: none;
+}
+
+.levels__lock {
+  grid-area: stars;
+  width: 38px;
+  height: 38px;
+}
+
+.levels__card.is-nope {
+  animation: quiz-shake 320ms;
+}
+
+/* ───────────── Настройки (11.5.6) ───────────── */
+
+.settings {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 16px;
+  pointer-events: auto;
+  background: var(--ink-55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 2;
+}
+
+.settings__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(100%, 460px);
+  padding: 18px 20px 20px;
+  background: var(--panel);
+  border: 4px solid var(--ink);
+  box-shadow:
+    0 0 0 3px var(--panel),
+    8px 9px 0 3px var(--ink);
+  transform: rotate(-0.6deg);
+}
+
+.settings__title {
+  margin: 0 0 4px;
+  font-weight: 900;
+  font-size: 28px;
+}
+
+.settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings__row--col {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.settings__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.settings__note {
+  margin: -4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.seg {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: nowrap;
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.settings__row--col .seg {
+  flex-direction: column;
+}
+
+.seg__opt {
+  min-height: 40px;
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 0;
+  cursor: pointer;
+}
+
+.seg__opt + .seg__opt {
+  border-left: 3px solid var(--ink);
+}
+
+.settings__row--col .seg__opt + .seg__opt {
+  border-left: 0;
+  border-top: 3px solid var(--ink);
+}
+
+.seg__opt[aria-checked='true'] {
+  background: var(--caption);
+  font-weight: 800;
+}
+
+.seg__opt:focus-visible,
+.btn:focus-visible,
+.round-btn:focus-visible,
+.slider:focus-visible {
+  outline: 3px solid var(--caption);
+  outline-offset: 3px;
+}
+
+.slider {
+  flex: 0 1 200px;
+  min-width: 120px;
+  height: 28px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 10px;
+  background: var(--chalk);
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+}
+
+.slider::-moz-range-track {
+  height: 10px;
+  background: var(--chalk);
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -10px;
+  background: var(--caption);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--caption);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+}
+
+/* ───────────── Экран загрузки (11.5.8) ───────────── */
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  pointer-events: auto;
+  background-color: var(--cave);
+  background-image: radial-gradient(circle at 50% 50%, var(--ink-35) 0 2.6px, transparent 3px);
+  background-size: 14px 14px;
+  transition: opacity 240ms;
+  z-index: 5;
+}
+
+.loading.is-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: min(100%, 460px);
+}
+
+.loading__title {
+  font-size: clamp(56px, 14vmin, 110px);
+}
+
+.loading__fuse {
+  --p: 0;
+  position: relative;
+  width: 100%;
+  height: 14px;
+  background: var(--timber-light);
+  border: 3px solid var(--ink);
+  border-radius: 7px;
+}
+
+.loading__burn {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--p) * 100%);
+  background: var(--ink-70);
+  border-radius: 4px;
+  transition: width 120ms;
+}
+
+.loading__spark {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--p) * 100%);
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  background: var(--caption);
+  clip-path: polygon(50% 0, 62% 36%, 100% 50%, 62% 64%, 50% 100%, 38% 64%, 0 50%, 38% 36%);
+  animation: spark-spin 420ms linear infinite;
+  transition: left 120ms;
+}
+
+@keyframes spark-spin {
+  to {
+    transform: rotate(90deg) scale(1.15);
+  }
+}
+
+.loading__label {
+  font-size: 30px;
+  color: var(--panel);
+  -webkit-text-stroke: 0.14em var(--ink);
+  paint-order: stroke fill;
+}
+
+.loading__tip {
+  margin: 0;
+  padding: 10px 14px 12px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  transform: rotate(-1deg);
+}
+
+.loading__tip figcaption {
+  display: inline-block;
+  margin: -22px 0 6px -4px;
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--caption);
+  border: 3px solid var(--ink);
+}
+
+.loading__tip p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+/* ───────────── Пузырь обучения (11.5.7) ───────────── */
+
+.bubble {
+  position: absolute;
+  z-index: 6;
+  width: min(300px, calc(100% - 20px));
+  padding: 12px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 4px 5px 0 var(--ink);
+  pointer-events: auto;
+  animation: bubble-in 220ms cubic-bezier(0.3, 1.7, 0.5, 1) both;
+}
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--tail-x, 50%) - 12px);
+  bottom: -18px;
+  width: 24px;
+  height: 18px;
+  background: var(--panel);
+  border-right: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  clip-path: polygon(0 0, 100% 0, 30% 100%);
+  transform: skewX(-12deg);
+}
+
+.bubble--below::after {
+  bottom: auto;
+  top: -18px;
+  transform: scaleY(-1) skewX(-12deg);
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateY(10px);
+  }
+}
+
+.bubble__text {
+  margin: 0;
+  align-self: stretch;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.bubble__ok {
+  min-height: 40px;
+  padding: 4px 16px;
+  font-size: 16px;
+}
+
+/* ───────────── Тост ───────────── */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 64px;
+  z-index: 6;
+  max-width: 90%;
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  background: var(--caption);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: translateX(-50%) rotate(-1deg);
+  animation: menu-in 200ms ease-out both;
+  pointer-events: none;
+}
+
+/* ───────────── Отладка (только dev) ───────────── */
+
+.debug {
+  position: absolute;
+  right: 8px;
+  top: 64px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 210px;
+  padding: 8px;
+  font:
+    12px/1.3 ui-monospace,
+    monospace;
+  color: var(--chalk);
+  background: var(--ink-70);
+  border: 2px solid var(--chalk);
+}
+
+.debug pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.debug button {
+  font: inherit;
 }

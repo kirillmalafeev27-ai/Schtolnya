@@ -8,7 +8,8 @@ import type { HintLevel } from '../config/levels';
 import { hex, palette as P } from '../config/palette';
 import type { GameEvent } from '../core/events';
 import { Cell, cx, cy, manhattan, type Grid } from '../core/grid';
-import { koboldPathDistance } from '../core/kobold';
+import { koboldPathDistance, koboldPreview } from '../core/kobold';
+import { blastCross } from '../core/blast';
 import type { GameState } from '../core/state';
 import type { SfxKey } from '../i18n/sfx.de';
 import { BlastView } from '../render/BlastView';
@@ -769,23 +770,58 @@ export class GameScene extends Phaser.Scene {
     this.applyScroll(dx, dy);
   }
 
-  /** Отладка: сетка и путь кобольда. */
-  debugDraw(on: boolean): void {
+  /** Отладка (13.7): сетка, путь кобольда целиком, кресты всех пород. */
+  debugDraw(o: { grid: boolean; koboldPath: boolean; crosses: boolean }): void {
     const v = this.views;
     if (!v) return;
     const key = '__debug';
-    const old = this.children.getByName(key);
-    old?.destroy();
-    if (!on) return;
+    this.children.getByName(key)?.destroy();
+    if (!o.grid && !o.koboldPath && !o.crosses) return;
     const s = v.ctrl.state;
     const g = s.grid;
-    const gfx = this.add.graphics().setName(key);
+    const gfx = this.add.graphics().setName(key).setDepth(20);
     v.layers.ui.add(gfx);
-    gfx.lineStyle(2, hex(P.good), 0.5);
-    for (let x = 0; x <= g.w; x++) gfx.lineBetween(x * CELL, 0, x * CELL, g.h * CELL);
-    for (let y = 0; y <= g.h; y++) gfx.lineBetween(0, y * CELL, g.w * CELL, y * CELL);
-    void cx;
-    void cy;
+    if (o.grid) {
+      gfx.lineStyle(2, hex(P.good), 0.5);
+      for (let x = 0; x <= g.w; x++) gfx.lineBetween(x * CELL, 0, x * CELL, g.h * CELL);
+      for (let y = 0; y <= g.h; y++) gfx.lineBetween(0, y * CELL, g.w * CELL, y * CELL);
+    }
+    if (o.koboldPath) {
+      gfx.lineStyle(6, hex(P.kobold.eyes), 0.9);
+      for (const k of s.kobolds) {
+        const path = [k.cell, ...koboldPreview(s, k, g.w * g.h)];
+        for (let i = 1; i < path.length; i++)
+          gfx.lineBetween(cellX(g, path[i - 1]), cellY(g, path[i - 1]), cellX(g, path[i]), cellY(g, path[i]));
+      }
+    }
+    if (o.crosses) {
+      gfx.lineStyle(4, hex(P.bad), 0.55);
+      for (let c = 0; c < g.cells.length; c++) {
+        const t = g.cells[c];
+        if (t !== Cell.ROCK && t !== Cell.HARD && t !== Cell.VEIN && t !== Cell.POCKET) continue;
+        const cross = blastCross(g, c, s.params.blastRange);
+        for (const cc of cross.cells)
+          gfx.strokeRect(cx(g, cc) * CELL + 10, cy(g, cc) * CELL + 10, CELL - 20, CELL - 20);
+      }
+    }
     void manhattan;
+  }
+
+  get lightCount(): number {
+    return this.views?.lights.lastCount ?? 0;
+  }
+
+  /** Автоснижение качества посреди раунда: свет — запасным путём. */
+  disableLighting(): void {
+    this.views?.lights.disableFilter();
+    if (this.opts) this.opts.lighting = false;
+  }
+
+  /** Сменить язык слов-звуков на лету. */
+  setWords(words: Record<SfxKey, string>, latin: boolean): void {
+    if (!this.opts) return;
+    this.opts.words = words;
+    this.opts.latinWords = latin;
+    if (this.views) this.views.juice.sfxLatin = latin;
   }
 }

@@ -1,7 +1,8 @@
 // Приложение «Шахта»: страница-комикс, игра Phaser, панель вопроса, экраны и поток раундов.
 
 import Phaser from 'phaser';
-import type { GenReport, Recipe } from '../art/ArtFactory';
+import { ArtFactory, type GenReport, type Recipe } from '../art/ArtFactory';
+import { manifest } from '../art/manifest';
 import { recipes as fullRecipes } from '../art/recipes';
 import { setupKit } from '../art/setupKit';
 import { balance } from '../config/balance';
@@ -22,13 +23,19 @@ import type { QuestionProvider } from '../shared/questions/types';
 import { GearWidget } from '../ui/GearWidget';
 import { iconBoot, iconDynamite, iconPalm, iconPause, iconReady, iconShield, iconWait } from '../ui/icons';
 import { WorldPlates } from '../ui/plates';
+import { DebugPanel } from '../dev/DebugPanel';
 import { IntroOverlay } from '../ui/IntroOverlay';
+import { LevelSelectScreen } from '../ui/screens/LevelSelectScreen';
+import { LoadingScreen } from '../ui/screens/LoadingScreen';
+import { MenuScreen } from '../ui/screens/MenuScreen';
 import { PauseScreen } from '../ui/screens/PauseScreen';
+import { SettingsScreen } from '../ui/screens/SettingsScreen';
+import { TutorialBubble } from '../ui/TutorialBubble';
 import { ResultsScreen } from '../ui/screens/ResultsScreen';
 import { applyTheme } from '../ui/theme';
 import { MineAudio } from '../audio/MineAudio';
 import { RoundController } from './RoundController';
-import { defaultStorage, GameStore, type KeyValueStorage } from './storage';
+import { defaultStorage, GameStore, type KeyValueStorage, type Settings } from './storage';
 
 export interface FinishInfo {
   level: number;
@@ -82,6 +89,19 @@ export class MineApp {
   private introOverlay: IntroOverlay | null = null;
   /** Что сделает верный ответ — запоминается до ответа для значка над героем. */
   private answerKindNow: string = 'step';
+  private mode: 'boot' | 'menu' | 'levels' | 'round' = 'boot';
+  private loading: LoadingScreen | null = null;
+  private menu: MenuScreen | null = null;
+  private levelsScreen: LevelSelectScreen | null = null;
+  private settingsScreen: SettingsScreen | null = null;
+  private tutorial: TutorialBubble | null = null;
+  private tutorialQueue: ('start' | 'planted' | 'koboldAwake')[] = [];
+  private debugPanel: DebugPanel | null = null;
+  private fpsTimer = 0;
+  private slowSeconds = 0;
+  /** Автоснижение качества срабатывает один раз за сессию (13.6.4). */
+  private autoLoweredThisSession = false;
+  private readonly bootStarted = performance.now();
   reducedMotion = false;
 
   constructor(
@@ -167,6 +187,8 @@ export class MineApp {
     this.ro = new ResizeObserver(() => this.relayout());
     this.ro.observe(container);
     this.ro.observe(this.canvasHost);
+    this.loading = new LoadingScreen(this.screens);
+    this.fpsTimer = window.setInterval(() => this.watchFps(), 1000);
   }
 
   // ───────────── запуск ─────────────
@@ -192,7 +214,7 @@ export class MineApp {
       const bootConfig: BootConfig = {
         cellPx: this.texCellPx,
         recipes,
-        onProgress: () => undefined,
+        onProgress: (done, total) => this.loading?.progress(done / Math.max(1, total)),
         onDone: (report) => {
           this.artReport = report;
           resolve();
@@ -228,7 +250,227 @@ export class MineApp {
     });
     this.relayout();
     void this.panel.start();
-    this.startLevel(this.options.level ?? 1, this.options.seed);
+    // Экран загрузки с фактом держится хотя бы мгновение, чтобы не мигать.
+    const shown = performance.now() - this.bootStarted;
+    if (shown < 900) await new Promise((r) => window.setTimeout(r, 900 - shown));
+    if (this.destroyed) return;
+    this.loading?.hide();
+    this.loading = null;
+    // Уровень задан снаружи (встраивание, ?level=) — сразу в раунд, иначе — меню.
+    if (this.options.level !== undefined) this.startLevel(this.options.level, this.options.seed);
+    else this.showMenu();
+  }
+
+  // ───────────── меню и выбор уровня (11.5.1–2) ─────────────
+
+  private get hasProgress(): boolean {
+    return Object.values(this.store.progress.stars).some((n) => n > 0);
+  }
+
+  /** Меню поверх живой заставки: случайная штольня с фонарями и спящим кобольдом. */
+  showMenu(): void {
+    if (!this.scene) return;
+    this.leaveRound();
+    this.closeScreens();
+    this.mode = 'menu';
+    this.setMenuLayout(true);
+    this.startAttract();
+    this.menu = new MenuScreen(
+      this.screens,
+      {
+        onPlay: () => {
+          if (this.hasProgress) this.showLevels();
+          else this.startLevel(1);
+        },
+        onLevels: () => this.showLevels(),
+        onSettings: () => this.openSettings(),
+      },
+      { showLevels: this.hasProgress },
+    );
+  }
+
+  showLevels(): void {
+    if (!this.scene) return;
+    this.menu?.destroy();
+    this.menu = null;
+    this.levelsScreen?.destroy();
+    this.mode = 'levels';
+    this.setMenuLayout(true);
+    const cards = levels.map((def) => ({
+      def,
+      stars: this.store.progress.stars[def.id] ?? 0,
+      best: this.store.progress.best[def.id] ?? null,
+      locked: !this.store.isUnlocked(def.id),
+    }));
+    this.levelsScreen = new LevelSelectScreen(this.screens, cards, {
+      onPick: (id) => this.startLevel(id),
+      onBack: () => this.showMenu(),
+    });
+  }
+
+  /** Меню и выбор уровня — на всю страницу, панель вопроса прячется. */
+  private setMenuLayout(on: boolean): void {
+    this.root.classList.toggle('mine--menu', on);
+    this.relayout();
+  }
+
+  private startAttract(): void {
+    const scene = this.scene;
+    if (!scene) return;
+    this.ensureTexQuality();
+    const def = getLevel(2);
+    const gen = generateLevel(def, this.layout?.landscape ?? false, Math.floor(Math.random() * 1e9));
+    const ctrl = new RoundController(def, gen, this.pace.snapshot());
+    this.ctrl = null;
+    scene.startRound(ctrl, this.sceneOptions(), true);
+    this.audio.detach();
+  }
+
+  private closeScreens(): void {
+    this.menu?.destroy();
+    this.menu = null;
+    this.levelsScreen?.destroy();
+    this.levelsScreen = null;
+    this.results?.destroy();
+    this.results = null;
+    this.pauseScreen?.destroy();
+    this.pauseScreen = null;
+    this.settingsScreen?.destroy();
+    this.settingsScreen = null;
+    this.root.classList.remove('mine--paused');
+  }
+
+  /** Остановить текущий раунд (без итогов). */
+  private leaveRound(): void {
+    clearTimeout(this.roundOverTimer);
+    clearTimeout(this.introTimer);
+    this.introActive = false;
+    this.introOverlay?.destroy();
+    this.introOverlay = null;
+    this.tutorial?.destroy();
+    this.tutorial = null;
+    this.tutorialQueue = [];
+    this.plates.hideAll();
+    this.unsub?.();
+    this.unsub = null;
+    this.ctrl = null;
+    this.audio.detach();
+    this.panel.setPaused(false);
+  }
+
+  // ───────────── настройки (11.5.6) ─────────────
+
+  openSettings(): void {
+    this.settingsScreen?.destroy();
+    this.settingsScreen = new SettingsScreen(this.screens, this.store.settings, {
+      onChange: (patch) => this.applySettings(patch),
+      onClose: () => {
+        this.settingsScreen?.destroy();
+        this.settingsScreen = null;
+        const focus = this.screens.querySelector<HTMLButtonElement>('.pause__resume, .menu__play');
+        focus?.focus({ preventScroll: true });
+      },
+    });
+  }
+
+  private applySettings(patch: Partial<Settings>): void {
+    Object.assign(this.store.settings, patch);
+    this.store.saveSettings();
+    const st = this.store.settings;
+    if ('soundOn' in patch || 'sfxVolume' in patch || 'ambientVolume' in patch) this.applySoundSettings();
+    if ('reducedMotion' in patch) {
+      const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      this.reducedMotion = st.reducedMotion ?? prefersReduced;
+      this.root.classList.toggle('mine--reduced', this.reducedMotion);
+      this.scene?.setReduced(this.reducedMotion);
+    }
+    if ('hints' in patch) this.scene?.setHintLevel(st.hints);
+    if ('sfxLang' in patch) this.scene?.setWords(st.sfxLang === 'ru' ? sfxRu : sfxDe, st.sfxLang !== 'ru');
+    // Свет выключается сразу; чёткость текстур меняется со следующего раунда.
+    if (patch.quality === 'low') this.scene?.disableLighting();
+  }
+
+  /** Текстуры под выбранное качество: перерисовываются между раундами (13.6.3). */
+  private ensureTexQuality(): void {
+    const want = this.store.settings.quality === 'low' ? balance.art.cellPxLow : balance.art.cellPx;
+    if (want === this.texCellPx || !this.game || !this.scene) return;
+    this.scene.clearRound();
+    const factory = new ArtFactory(this.game.textures, want, this.options.recipes ?? fullRecipes);
+    for (const e of manifest()) factory.generate(e);
+    this.texCellPx = want;
+  }
+
+  private sceneOptions() {
+    const st = this.store.settings;
+    return {
+      reduced: this.reducedMotion,
+      hints: st.hints,
+      words: st.sfxLang === 'ru' ? sfxRu : sfxDe,
+      latinWords: st.sfxLang !== 'ru',
+      texCellPx: this.texCellPx,
+      lighting: st.quality === 'high' && !!this.game && filtersSupported(this.game),
+      dpr: this.dpr,
+      onPlate: (kind: 'noShelter' | 'pathClosed' | 'veinFirst', cell: number, visible: boolean) =>
+        this.plates.show(kind, cell, visible),
+      onPickupFly: (kind: 'stick' | 'vein' | 'nugget', from: { x: number; y: number }) =>
+        this.flyToGear(kind, from),
+      onEvent: (e: GameEvent, st2: GameState) => this.audio.onEvent(e, st2),
+    };
+  }
+
+  // ───────────── обучение (11.5.7) ─────────────
+
+  private maybeTutorial(kind: 'start' | 'planted' | 'koboldAwake'): void {
+    if (this.store.progress.tutorial[kind]) return;
+    if (this.tutorial) {
+      if (!this.tutorialQueue.includes(kind)) this.tutorialQueue.push(kind);
+      return;
+    }
+    // После текущей пачки событий: подсказка ставит игру на паузу.
+    window.setTimeout(() => this.showTutorial(kind), 0);
+  }
+
+  private showTutorial(kind: 'start' | 'planted' | 'koboldAwake'): void {
+    const ctrl = this.ctrl;
+    const at = this.scene?.heroCss();
+    if (!ctrl || !at || ctrl.state.status !== 'playing' || this.store.progress.tutorial[kind]) return;
+    this.store.progress.tutorial[kind] = true;
+    this.store.saveProgress();
+    if (!ctrl.state.paused) ctrl.pause();
+    this.tutorial = new TutorialBubble(this.overlay, ru.tutorial[kind], at, () => {
+      this.tutorial?.destroy();
+      this.tutorial = null;
+      const next = this.tutorialQueue.shift();
+      if (next) this.showTutorial(next);
+      else if (this.ctrl === ctrl && ctrl.state.paused && !this.pauseScreen) ctrl.resume();
+    });
+  }
+
+  // ───────────── качество по FPS (13.6.4) ─────────────
+
+  private watchFps(): void {
+    const game = this.game;
+    const s = this.ctrl?.state;
+    const test = (window as unknown as { __MINE_TEST__?: boolean }).__MINE_TEST__;
+    if (!game || !s || test || this.autoLoweredThisSession || this.store.settings.quality === 'low') return;
+    if (this.introActive || s.paused || s.status !== 'playing' || document.visibilityState !== 'visible') {
+      this.slowSeconds = 0;
+      return;
+    }
+    this.slowSeconds = game.loop.actualFps < 45 ? this.slowSeconds + 1 : 0;
+    if (this.slowSeconds < 3) return;
+    this.autoLoweredThisSession = true;
+    this.applySettings({ quality: 'low', autoLowered: true });
+    this.toast(ru.settingsScreen.autoLowQuality);
+  }
+
+  private toast(text: string): void {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    el.textContent = text;
+    this.worldPanel.appendChild(el);
+    window.setTimeout(() => el.remove(), 3200);
   }
 
   /** Текущий раунд (для отладки и сквозных тестов). */
@@ -282,17 +524,11 @@ export class MineApp {
   startLevel(id: number, seed: number = Math.floor(Math.random() * 1e9)): void {
     if (!this.scene) return;
     this.levelId = id;
-    this.results?.destroy();
-    this.results = null;
-    this.pauseScreen?.destroy();
-    this.pauseScreen = null;
-    this.plates.hideAll();
-    clearTimeout(this.roundOverTimer);
-    clearTimeout(this.introTimer);
-    this.introActive = false;
-    this.introOverlay?.destroy();
-    this.introOverlay = null;
-    this.unsub?.();
+    this.leaveRound();
+    this.closeScreens();
+    this.mode = 'round';
+    this.setMenuLayout(false);
+    this.ensureTexQuality();
     const def = getLevel(id);
     const landscape = this.layout?.landscape ?? false;
     const gen = generateLevel(def, landscape, seed);
@@ -300,19 +536,7 @@ export class MineApp {
     // Темп фиксируется на старте раунда и внутри раунда не меняется (3.4).
     const ctrl = new RoundController(def, gen, this.pace.snapshot());
     this.ctrl = ctrl;
-    const words = this.store.settings.sfxLang === 'ru' ? sfxRu : sfxDe;
-    this.scene.startRound(ctrl, {
-      reduced: this.reducedMotion,
-      hints: this.store.settings.hints,
-      words,
-      latinWords: this.store.settings.sfxLang !== 'ru',
-      texCellPx: this.texCellPx,
-      lighting: this.store.settings.quality === 'high' && !!this.game && filtersSupported(this.game),
-      dpr: this.dpr,
-      onPlate: (kind, cell, visible) => this.plates.show(kind, cell, visible),
-      onPickupFly: (kind, from) => this.flyToGear(kind, from),
-      onEvent: (e, st) => this.audio.onEvent(e, st),
-    });
+    this.scene.startRound(ctrl, this.sceneOptions());
     this.audio.attach(ctrl, this.scene);
     this.unsub = ctrl.subscribe((events, state) => this.onRoundEvents(events, state));
     this.syncUi(ctrl.state);
@@ -355,6 +579,7 @@ export class MineApp {
     this.scene?.finishIntro();
     if (this.ctrl) this.syncUi(this.ctrl.state);
     this.scene?.setRunning(true);
+    this.maybeTutorial('start');
   }
 
   /** Над героем мелькает значок действия верного ответа (9.2). */
@@ -385,9 +610,12 @@ export class MineApp {
         if (e.correct) this.flashAction(this.answerKindNow);
       }
       if (e.type === 'CAUGHT' || e.type === 'HERO_BLASTED' || e.type === 'ESCAPED') this.onRoundOver(s);
+      if (e.type === 'PLANTED') this.maybeTutorial('planted');
+      if (e.type === 'KOBOLD_WAKE') this.maybeTutorial('koboldAwake');
       if (e.type === 'PAUSED') {
         this.panel.setPaused(true);
-        this.audio.setPaused(true);
+        // Подсказка обучения ставит игру, но не глушит штольню.
+        if (!this.tutorial) this.audio.setPaused(true);
       }
       if (e.type === 'RESUMED') {
         this.panel.setPaused(false);
@@ -498,7 +726,7 @@ export class MineApp {
       {
         onRetry: () => this.startLevel(this.levelId),
         onNext: () => this.startLevel(Math.min(this.levelId + 1, levels[levels.length - 1].id)),
-        onMenu: () => this.startLevel(this.levelId),
+        onMenu: () => this.showMenu(),
         onTally: (i) => this.audio.tally(i),
       },
     );
@@ -540,8 +768,8 @@ export class MineApp {
     this.pauseScreen = new PauseScreen(this.screens, {
       onResume: () => this.resume(),
       onRestart: () => this.startLevel(this.levelId),
-      onMenu: () => this.startLevel(this.levelId),
-      onSettings: () => undefined,
+      onMenu: () => this.showMenu(),
+      onSettings: () => this.openSettings(),
     });
     this.root.classList.add('mine--paused');
   }
@@ -550,8 +778,10 @@ export class MineApp {
     const ctrl = this.ctrl;
     this.pauseScreen?.destroy();
     this.pauseScreen = null;
+    this.settingsScreen?.destroy();
+    this.settingsScreen = null;
     this.root.classList.remove('mine--paused');
-    if (ctrl && ctrl.state.paused) ctrl.resume();
+    if (ctrl && ctrl.state.paused && !this.tutorial) ctrl.resume();
   }
 
   private onGesture = (e: Event) => {
@@ -587,6 +817,15 @@ export class MineApp {
 
   private onKey = (e: KeyboardEvent) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (import.meta.env.DEV && (e.key === '`' || e.key === 'ё' || e.code === 'Backquote')) {
+      e.preventDefault();
+      if (this.debugPanel) {
+        this.debugPanel.destroy();
+        this.debugPanel = null;
+      } else this.debugPanel = new DebugPanel(this.root, this);
+      return;
+    }
+    if (this.mode !== 'round' || this.settingsScreen || this.tutorial) return;
     const ctrl = this.ctrl;
     const target = e.target as HTMLElement | null;
     const typing =
@@ -627,6 +866,10 @@ export class MineApp {
     this.destroyed = true;
     clearTimeout(this.roundOverTimer);
     clearTimeout(this.introTimer);
+    clearInterval(this.fpsTimer);
+    this.debugPanel?.destroy();
+    this.tutorial?.destroy();
+    this.closeScreens();
     window.removeEventListener('keydown', this.onKey);
     window.removeEventListener('pointerdown', this.onGesture, true);
     window.removeEventListener('keydown', this.onGesture, true);

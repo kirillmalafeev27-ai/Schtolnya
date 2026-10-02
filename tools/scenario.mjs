@@ -13,6 +13,12 @@ page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 page.on('console', (m) => {
   if (m.type() === 'error') console.log('[error]', m.text());
 });
+await page.addInitScript(() =>
+  localStorage.setItem(
+    'mine:progress',
+    JSON.stringify({ tutorial: { start: true, planted: true, koboldAwake: true } }),
+  ),
+);
 await page.goto(`http://localhost:5173/?seed=${process.argv[6] || 5}&level=${process.argv[7] || 2}&test`);
 await page.waitForFunction(() => !!window.mine?.app?.round, null, { timeout: 60000 });
 await page.waitForTimeout(1500);

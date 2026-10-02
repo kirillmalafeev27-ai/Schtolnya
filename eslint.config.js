@@ -17,6 +17,7 @@ export default tseslint.config(
         performance: 'readonly',
         getComputedStyle: 'readonly',
         Event: 'readonly',
+        localStorage: 'readonly',
       },
     },
   },
