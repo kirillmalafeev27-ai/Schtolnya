@@ -2,7 +2,8 @@
 
 import Phaser from 'phaser';
 import type { GenReport, Recipe } from '../art/ArtFactory';
-import { placeholderRecipes } from '../art/recipes/placeholder';
+import { recipes as fullRecipes } from '../art/recipes';
+import { setupKit } from '../art/setupKit';
 import { balance } from '../config/balance';
 import { getLevel, levels } from '../config/levels';
 import { DIRS, Cell, cx, cy, idx, inBounds } from '../core/grid';
@@ -14,6 +15,7 @@ import { sfxDe, sfxRu } from '../i18n/sfx.de';
 import { BootScene, type BootConfig } from '../scenes/BootScene';
 import { GameScene } from '../scenes/GameScene';
 import { applyPageLayout, computePageLayout, type PageLayout } from '../shared/layout';
+import { comicLightRenderNodes, filtersSupported } from '../shared/ComicLightFilter';
 import { PaceTracker } from '../shared/pace';
 import { QuestionPanel } from '../shared/QuestionPanel';
 import type { QuestionProvider } from '../shared/questions/types';
@@ -36,6 +38,8 @@ export interface FinishInfo {
 
 export interface MineOptions {
   questions: QuestionProvider;
+  /** Сид первого уровня (для отладки и повторяемых снимков). */
+  seed?: number;
   storage?: KeyValueStorage;
   level?: number;
   onFinish?: (r: FinishInfo) => void;
@@ -112,7 +116,12 @@ export class MineApp {
         fontMaxPx: balance.questions.fontMaxPx,
         fontMinPx: balance.questions.fontMinPx,
       },
-      { groupLabel: ru.quizLabel, optionLabel: ru.optionLabel, readyHint: ru.readyHint, hoppla: sfxDe.hoppla },
+      {
+        groupLabel: ru.quizLabel,
+        optionLabel: ru.optionLabel,
+        readyHint: ru.readyHint,
+        hoppla: sfxDe.hoppla,
+      },
     );
     this.panel.onAnswer = (r) => {
       const ctrl = this.ctrl;
@@ -164,7 +173,8 @@ export class MineApp {
     this.dpr = Math.min(window.devicePixelRatio || 1, balance.art.maxDpr);
     const quality = this.store.settings.quality;
     this.texCellPx = quality === 'low' ? balance.art.cellPxLow : balance.art.cellPx;
-    const recipes = this.options.recipes ?? placeholderRecipes;
+    setupKit();
+    const recipes = this.options.recipes ?? fullRecipes;
     await new Promise<void>((resolve) => {
       const bootConfig: BootConfig = {
         cellPx: this.texCellPx,
@@ -182,7 +192,12 @@ export class MineApp {
         backgroundColor: '#0f1626',
         antialias: true,
         scale: { mode: Phaser.Scale.NONE, width: w, height: h, zoom: 1 / this.dpr },
-        render: { antialias: true, roundPixels: false, powerPreference: 'high-performance' },
+        render: {
+          antialias: true,
+          roundPixels: false,
+          powerPreference: 'high-performance',
+          renderNodes: comicLightRenderNodes() as Record<string, never>,
+        },
         audio: { noAudio: true },
         input: { keyboard: false },
         banner: false,
@@ -200,7 +215,7 @@ export class MineApp {
     });
     this.relayout();
     void this.panel.start();
-    this.startLevel(this.options.level ?? 1);
+    this.startLevel(this.options.level ?? 1, this.options.seed);
   }
 
   /** Текущий раунд (для отладки и сквозных тестов). */
@@ -222,7 +237,10 @@ export class MineApp {
 
   private canvasSize(): { w: number; h: number } {
     const r = this.canvasHost.getBoundingClientRect();
-    return { w: Math.max(2, Math.round(r.width * this.dpr)), h: Math.max(2, Math.round(r.height * this.dpr)) };
+    return {
+      w: Math.max(2, Math.round(r.width * this.dpr)),
+      h: Math.max(2, Math.round(r.height * this.dpr)),
+    };
   }
 
   private relayout(): void {
@@ -248,7 +266,7 @@ export class MineApp {
 
   // ───────────── раунд ─────────────
 
-  startLevel(id: number, seed = Math.floor(Math.random() * 1e9)): void {
+  startLevel(id: number, seed: number = Math.floor(Math.random() * 1e9)): void {
     if (!this.scene) return;
     this.levelId = id;
     this.results?.destroy();
@@ -272,6 +290,8 @@ export class MineApp {
       words,
       latinWords: this.store.settings.sfxLang !== 'ru',
       texCellPx: this.texCellPx,
+      lighting: this.store.settings.quality === 'high' && !!this.game && filtersSupported(this.game),
+      dpr: this.dpr,
       onPlate: (kind, cell, visible) => this.plates.show(kind, cell, visible),
       onPickupFly: (kind, from) => this.flyToGear(kind, from),
     });
@@ -457,7 +477,8 @@ export class MineApp {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const ctrl = this.ctrl;
     const target = e.target as HTMLElement | null;
-    const typing = target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA');
+    const typing =
+      target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA');
     if (typing) return;
     if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З' || e.key === 'Escape') {
       e.preventDefault();

@@ -83,7 +83,8 @@ export class PaceTracker {
   record(timeMs: number, correct: boolean, countTime: boolean): void {
     if (countTime && timeMs > 0) {
       this.data.times.push(Math.round(timeMs));
-      if (this.data.times.length > this.cfg.timeWindow) this.data.times.splice(0, this.data.times.length - this.cfg.timeWindow);
+      if (this.data.times.length > this.cfg.timeWindow)
+        this.data.times.splice(0, this.data.times.length - this.cfg.timeWindow);
     }
     this.data.results.push(correct ? 1 : 0);
     if (this.data.results.length > this.cfg.correctWindow)

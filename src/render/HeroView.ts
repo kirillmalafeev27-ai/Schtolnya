@@ -151,7 +151,12 @@ export class HeroView {
     this.scene.tweens.add({ targets: [this.legL, this.legR], angle: 0, delay: dur, duration: 80 });
     // Бег в укрытие — наклон вперёд, шарф развевается.
     this.body.rotation = shelter ? 0.16 * this.facing : 0;
-    this.scene.tweens.add({ targets: this.scarf, angle: { from: -40, to: 0 }, duration: dur * 1.6, ease: 'Sine.easeOut' });
+    this.scene.tweens.add({
+      targets: this.scarf,
+      angle: { from: -40, to: 0 },
+      duration: dur * 1.6,
+      ease: 'Sine.easeOut',
+    });
   }
 
   /** Закладка — присел, вставил шашку, чиркнул спичкой, 250 мс. */
@@ -166,14 +171,32 @@ export class HeroView {
       hold: A.plantMs * 0.2,
       ease: 'Quad.easeOut',
     });
-    this.scene.tweens.add({ targets: this.armR, angle: { from: 0, to: -80 }, duration: A.plantMs * 0.5, yoyo: true });
-    this.scene.tweens.add({ targets: this.armL, angle: { from: 0, to: 50 }, delay: A.plantMs * 0.5, duration: 90, yoyo: true });
+    this.scene.tweens.add({
+      targets: this.armR,
+      angle: { from: 0, to: -80 },
+      duration: A.plantMs * 0.5,
+      yoyo: true,
+    });
+    this.scene.tweens.add({
+      targets: this.armL,
+      angle: { from: 0, to: 50 },
+      delay: A.plantMs * 0.5,
+      duration: 90,
+      yoyo: true,
+    });
   }
 
   /** Отказ: покачивается. */
   shrug(reduced: boolean): void {
     if (reduced) return;
-    this.scene.tweens.add({ targets: this.body, angle: { from: -8, to: 8 }, duration: 70, yoyo: true, repeat: 2, onComplete: () => this.body.setAngle(0) });
+    this.scene.tweens.add({
+      targets: this.body,
+      angle: { from: -8, to: 8 },
+      duration: 70,
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => this.body.setAngle(0),
+    });
   }
 
   setMood(mood: HeroMood, reduced: boolean): void {
@@ -212,19 +235,38 @@ export class HeroView {
         this.head.setTexture(ART.heroHeadSooty);
         this.torso.setTint(hex(P.scorch)).setTintMode(Phaser.TintModes.MULTIPLY);
         this.body.y = 0;
-        if (!reduced) this.scene.tweens.add({ targets: this.body, angle: { from: -10, to: 10 }, duration: 90, yoyo: true, repeat: 3 });
+        if (!reduced)
+          this.scene.tweens.add({
+            targets: this.body,
+            angle: { from: -10, to: 10 },
+            duration: 90,
+            yoyo: true,
+            repeat: 3,
+          });
         break;
       case 'caught':
         this.head.setTexture(ART.heroHeadWorried);
         if (!reduced) {
           this.scene.tweens.add({ targets: this.body, y: -CELL * 0.35, duration: 220, ease: 'Back.easeOut' });
-          this.moodTween = this.scene.tweens.add({ targets: [this.legL, this.legR], angle: { from: -25, to: 25 }, duration: 110, yoyo: true, repeat: -1 });
+          this.moodTween = this.scene.tweens.add({
+            targets: [this.legL, this.legR],
+            angle: { from: -25, to: 25 },
+            duration: 110,
+            yoyo: true,
+            repeat: -1,
+          });
         }
         break;
       case 'victory':
         this.head.setTexture(ART.heroHeadHappy);
         if (!reduced)
-          this.moodTween = this.scene.tweens.add({ targets: this.armR, angle: { from: -150, to: -110 }, duration: 160, yoyo: true, repeat: -1 });
+          this.moodTween = this.scene.tweens.add({
+            targets: this.armR,
+            angle: { from: -150, to: -110 },
+            duration: 160,
+            yoyo: true,
+            repeat: -1,
+          });
         else this.armR.setAngle(-130);
         break;
       default:
@@ -244,7 +286,12 @@ export class HeroView {
     if (hasVein !== this.hasGold) {
       this.hasGold = hasVein;
       this.pouch.setTexture(hasVein ? ART.heroPouchGold : ART.heroPouch);
-      this.scene.tweens.add({ targets: this.pouch, scale: { from: this.ts * 1.6, to: this.ts }, duration: 300, ease: 'Back.easeOut' });
+      this.scene.tweens.add({
+        targets: this.pouch,
+        scale: { from: this.ts * 1.6, to: this.ts },
+        duration: 300,
+        ease: 'Back.easeOut',
+      });
     }
   }
 
@@ -259,7 +306,10 @@ export class HeroView {
 
   /** Налобный фонарь: центр света смещён по направлению взгляда (8.2). */
   lampWorld(): { x: number; y: number } {
-    return { x: this.root.x + this.facing * CELL * balance.light.heroLamp.offset, y: this.root.y - CELL * 0.55 };
+    return {
+      x: this.root.x + this.facing * CELL * balance.light.heroLamp.offset,
+      y: this.root.y - CELL * 0.55,
+    };
   }
 
   update(): void {
@@ -274,7 +324,13 @@ export class HeroView {
 
   /** Подъём вместе с клетью при победе. */
   rideUp(dy: number, duration: number): void {
-    this.scene.tweens.add({ targets: [this.root, this.shadow], y: `-=${dy}`, alpha: 0, duration, ease: 'Quad.easeIn' });
+    this.scene.tweens.add({
+      targets: [this.root, this.shadow],
+      y: `-=${dy}`,
+      alpha: 0,
+      duration,
+      ease: 'Quad.easeIn',
+    });
   }
 
   destroy(): void {

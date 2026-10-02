@@ -7,7 +7,15 @@ const seed = +(process.argv[3] ?? 1);
 const land = process.argv[4] === 'land';
 const def = getLevel(id);
 const l = generateLevel(def, land, seed);
-const ch: Record<number, string> = { [Cell.FLOOR]: '.', [Cell.ROCK]: 'R', [Cell.HARD]: 'X', [Cell.BEDROCK]: '#', [Cell.VEIN]: 'V', [Cell.POCKET]: 'P', [Cell.LIFT]: 'L' };
+const ch: Record<number, string> = {
+  [Cell.FLOOR]: '.',
+  [Cell.ROCK]: 'R',
+  [Cell.HARD]: 'X',
+  [Cell.BEDROCK]: '#',
+  [Cell.VEIN]: 'V',
+  [Cell.POCKET]: 'P',
+  [Cell.LIFT]: 'L',
+};
 const g = l.grid;
 let out = '';
 for (let y = 0; y < g.h; y++) {
@@ -23,4 +31,13 @@ for (let y = 0; y < g.h; y++) {
   out += '\n';
 }
 console.log(out);
-console.log({ attempts: l.attempts, relaxed: l.relaxed, kMin: l.kMin, steps: l.minRouteSteps, dilemma: l.dilemma, s2: l.s2, s3: l.s3, warnings: l.warnings });
+console.log({
+  attempts: l.attempts,
+  relaxed: l.relaxed,
+  kMin: l.kMin,
+  steps: l.minRouteSteps,
+  dilemma: l.dilemma,
+  s2: l.s2,
+  s3: l.s3,
+  warnings: l.warnings,
+});

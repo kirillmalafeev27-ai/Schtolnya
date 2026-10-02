@@ -6,7 +6,15 @@ import { Cell, cloneGrid, cx, cy, Grid, idx, isBorder, manhattan, neighbor } fro
 import { addLoops, carveMaze, wallsBetweenNodes } from './maze';
 import { bfsDist, blastDist } from './pathfinding';
 import { Rng, deriveSeed } from './rng';
-import { cheapestRouteCells, findDilemma, minBlastsToVein, minRoute, openRegion, routeCost, veinTargets } from './routes';
+import {
+  cheapestRouteCells,
+  findDilemma,
+  minBlastsToVein,
+  minRoute,
+  openRegion,
+  routeCost,
+  veinTargets,
+} from './routes';
 
 export interface GeneratedLevel {
   seed: number;
@@ -80,7 +88,14 @@ interface Attempt {
   level?: Omit<GeneratedLevel, 'seed' | 'attempts' | 'relaxed' | 'warnings'>;
 }
 
-function tryGenerate(def: LevelDef, w: number, h: number, rng: Rng, strict: boolean, opts: GenOptions): Attempt {
+function tryGenerate(
+  def: LevelDef,
+  w: number,
+  h: number,
+  rng: Rng,
+  strict: boolean,
+  opts: GenOptions,
+): Attempt {
   const [lo, hi] = def.blastsToVein;
   const g = carveMaze(w, h, rng);
   addLoops(g, rng, G.loopFraction);
@@ -168,11 +183,17 @@ function tryGenerate(def: LevelDef, w: number, h: number, rng: Rng, strict: bool
   // Кандидаты — проходы на любом самом дешёвом маршруте; ближние к жиле — чаще.
   const rubble: number[] = [];
   let kMin = minBlastsToVein(g, start, vein);
-  const toVeinSteps = bfsDist(g, veinTargets(g, vein), (i) => g.cells[i] !== Cell.BEDROCK && g.cells[i] !== Cell.LIFT);
+  const toVeinSteps = bfsDist(
+    g,
+    veinTargets(g, vein),
+    (i) => g.cells[i] !== Cell.BEDROCK && g.cells[i] !== Cell.LIFT,
+  );
   let guard = 0;
   while (kMin < lo && guard++ < 60) {
     const keyed = cheapestRouteCells(g, start, vein)
-      .filter((c) => g.cells[c] === Cell.FLOOR && c !== start && !lairs.includes(c) && manhattan(g, c, start) > 1)
+      .filter(
+        (c) => g.cells[c] === Cell.FLOOR && c !== start && !lairs.includes(c) && manhattan(g, c, start) > 1,
+      )
       .map((c) => ({ c, key: Math.max(0, toVeinSteps[c]) + rng.float() * 4 }));
     keyed.sort((a, b) => a.key - b.key);
     let accepted = false;
@@ -205,7 +226,9 @@ function tryGenerate(def: LevelDef, w: number, h: number, rng: Rng, strict: bool
 
   // Срезки: 3–5 стенок-скал между проходами превращаются в породу (5.9).
   const shortcuts: number[] = [];
-  const wallCands = rng.shuffle(wallsBetweenNodes(g).filter((i) => isWallBetweenPassages(g, i) && i !== vein));
+  const wallCands = rng.shuffle(
+    wallsBetweenNodes(g).filter((i) => isWallBetweenPassages(g, i) && i !== vein),
+  );
   const wantShortcuts = rng.int(G.shortcutsMin, G.shortcutsMax);
   for (const c of wallCands) {
     if (shortcuts.length >= wantShortcuts) break;
@@ -226,14 +249,16 @@ function tryGenerate(def: LevelDef, w: number, h: number, rng: Rng, strict: bool
   if (!dilemma.exists) {
     const more = rng.shuffle(
       wallsBetweenNodes(g).filter(
-        (i) => isWallBetweenPassages(g, i) && i !== vein && !shortcuts.includes(i) && manhattan(g, i, lift) > 1,
+        (i) =>
+          isWallBetweenPassages(g, i) && i !== vein && !shortcuts.includes(i) && manhattan(g, i, lift) > 1,
       ),
     );
     const fixes: number[] = [];
     for (const c of more) {
       g.cells[c] = Cell.ROCK;
       const k = minBlastsToVein(g, start, vein);
-      if (k >= lo && k <= hi && findDilemma(g, start, vein, k, budget, G.dilemmaMinShorter).exists) fixes.push(c);
+      if (k >= lo && k <= hi && findDilemma(g, start, vein, k, budget, G.dilemmaMinShorter).exists)
+        fixes.push(c);
       g.cells[c] = Cell.BEDROCK;
       if (fixes.length >= G.dilemmaFixTries) break;
     }
@@ -275,7 +300,11 @@ function tryGenerate(def: LevelDef, w: number, h: number, rng: Rng, strict: bool
     const rest = Array.from({ length: g.cells.length }, (_, i) => i)
       .filter(
         (i) =>
-          g.cells[i] === Cell.FLOOR && i !== start && !lairs.includes(i) && !spares.includes(i) && fromStart[i] <= 1,
+          g.cells[i] === Cell.FLOOR &&
+          i !== start &&
+          !lairs.includes(i) &&
+          !spares.includes(i) &&
+          fromStart[i] <= 1,
       )
       .sort((a, b) => nearRoute[b] - nearRoute[a]);
     for (const c of rest) {
@@ -312,7 +341,6 @@ function tryGenerate(def: LevelDef, w: number, h: number, rng: Rng, strict: bool
         g.cells[c] = Cell.BEDROCK;
         continue;
       }
-      kMin = k;
       pockets.push(c);
     }
     if (pockets.length < def.pockets && strict) return { ok: false, reason: 'pockets' };
@@ -351,7 +379,9 @@ function tryGenerate(def: LevelDef, w: number, h: number, rng: Rng, strict: bool
       kMin,
       minRoute: finalInfo.route,
       minRouteSteps: finalInfo.steps,
-      dilemma: finalDilemma.exists ? { altBlasts: finalDilemma.altBlasts, altSteps: finalDilemma.altSteps } : null,
+      dilemma: finalDilemma.exists
+        ? { altBlasts: finalDilemma.altBlasts, altSteps: finalDilemma.altSteps }
+        : null,
       s2,
       s3,
     },
@@ -379,7 +409,13 @@ export function generateLevel(
     const rng = new Rng(deriveSeed(seed, 1000 + attempt));
     const res = tryGenerate(def, w, h, rng, false, opts);
     if (res.ok && res.level) {
-      return { ...res.level, seed, attempts: G.maxAttempts + attempt + 1, relaxed: true, warnings: [warning] };
+      return {
+        ...res.level,
+        seed,
+        attempts: G.maxAttempts + attempt + 1,
+        relaxed: true,
+        warnings: [warning],
+      };
     }
   }
   throw new Error(`levelGen: не удалось построить уровень ${def.id} для сида ${seed}`);

@@ -27,7 +27,10 @@ export class BlastView {
     const s = this.ts;
 
     // Звезда взрыва.
-    const boom = this.scene.add.image(ox, oy, ART.boom).setScale(s * 0.3).setDepth(1e6);
+    const boom = this.scene.add
+      .image(ox, oy, ART.boom)
+      .setScale(s * 0.3)
+      .setDepth(1e6);
     this.layers.fx.add(boom);
     this.scene.tweens.add({
       targets: boom,
@@ -45,26 +48,38 @@ export class BlastView {
       onComplete: () => boom.destroy(),
     });
 
-    // Языки пламени по лучам.
+    // Языки пламени по лучам: струи бегут от центра наружу ровно по клеткам креста.
     for (let d = 0; d < 4; d++) {
       let c = origin;
       for (let k = 1; k <= rays[d]; k++) {
         c = neighbor(g, c, d);
         const last = k === rays[d];
-        const key = last ? ART.flameEnd : d % 2 === 0 ? ART.flameV : ART.flameH;
+        const vertical = d % 2 === 0;
         const fx = cellX(g, c);
         const fy = cellY(g, c) - CELL * 0.05;
-        const fl = this.scene.add.image(fx, fy, key).setScale(s * 0.2).setDepth(1e6 - 1);
-        if (last) fl.setAngle([0, 270, 180, 90][d]);
-        if (!last && (d === 0 || d === 1)) fl.setFlip(d === 1, d === 0);
+        let fl: Phaser.GameObjects.Image;
+        if (last) {
+          fl = this.scene.add.image(fx, fy, ART.flameEnd).setAngle([-90, 180, 90, 0][d]);
+        } else {
+          fl = this.scene.add.image(fx, fy, vertical ? ART.flameV : ART.flameH);
+          fl.setFlip(d === 1, d === 0);
+        }
+        fl.setScale(s * 0.25).setDepth(1e6 - 1);
         this.layers.fx.add(fl);
-        const delay = (k - 1) * 40;
+        const delay = (k - 1) * 45;
         this.scene.tweens.add({ targets: fl, scale: s, delay, duration: 90, ease: 'Back.easeOut' });
+        if (!reduced)
+          this.scene.tweens.add({
+            targets: fl,
+            scaleY: s * 0.82,
+            delay: delay + 90,
+            duration: 70,
+            yoyo: true,
+            repeat: 1,
+          });
         this.scene.tweens.add({
           targets: fl,
           alpha: 0,
-          scaleX: s * 0.7,
-          scaleY: s * 0.7,
           delay: delay + A.blastMs * 0.55,
           duration: A.blastMs * 0.4,
           onComplete: () => fl.destroy(),

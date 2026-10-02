@@ -33,14 +33,20 @@ export class ResultsScreen {
   constructor(
     host: HTMLElement,
     d: ResultsData,
-    handlers: { onRetry: () => void; onNext: () => void; onMenu: () => void; onTally?: (step: number) => void },
+    handlers: {
+      onRetry: () => void;
+      onNext: () => void;
+      onMenu: () => void;
+      onTally?: (step: number) => void;
+    },
   ) {
     const R = ru.results;
     const S = balance.score;
     const lines: { icon: string; label: string; value: number }[] = [];
     if (d.won) {
       lines.push({ icon: iconNugget(true), label: R.vein, value: S.vein });
-      if (d.nuggets) lines.push({ icon: iconNugget(true), label: R.nuggets(d.nuggets), value: d.nuggets * S.nugget });
+      if (d.nuggets)
+        lines.push({ icon: iconNugget(true), label: R.nuggets(d.nuggets), value: d.nuggets * S.nugget });
       if (d.sticks) lines.push({ icon: iconStick, label: R.sticks(d.sticks), value: d.sticks * S.stick });
     }
     const med = d.answerTimesMs.length ? median(d.answerTimesMs) / 1000 : 0;
@@ -100,14 +106,17 @@ export class ResultsScreen {
     const step = balance.anim.tallyStepMs;
     const base = balance.anim.resultPanelDelayMs;
     lines.forEach((l, i) => {
-      this.later(() => {
-        acc += l.value;
-        totalEl.textContent = String(acc);
-        totalEl.classList.remove('is-bump');
-        void totalEl.offsetWidth;
-        totalEl.classList.add('is-bump');
-        handlers.onTally?.(i);
-      }, base + step * (i + 1));
+      this.later(
+        () => {
+          acc += l.value;
+          totalEl.textContent = String(acc);
+          totalEl.classList.remove('is-bump');
+          void totalEl.offsetWidth;
+          totalEl.classList.add('is-bump');
+          handlers.onTally?.(i);
+        },
+        base + step * (i + 1),
+      );
     });
     if (!lines.length) totalEl.textContent = String(d.score);
     this.later(() => this.el.classList.add('is-done'), base + step * (lines.length + 1));

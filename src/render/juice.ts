@@ -2,6 +2,7 @@
 // Ничто здесь не блокирует ввод и не задерживает логику.
 
 import Phaser from 'phaser';
+import { putCanvas } from '../art/ArtFactory';
 import { ART, SMOKE_VARIANTS } from '../art/manifest';
 import { balance } from '../config/balance';
 import { palette as P } from '../config/palette';
@@ -30,7 +31,12 @@ export const SFX_STYLES = {
 export type SfxStyleName = keyof typeof SFX_STYLES;
 
 /** Растеризует слово-звук в текстуру (кэш) — Bangers, тушь, внешняя цветная обводка, наклон (7.4 sfxWord). */
-export function sfxWordTexture(scene: Phaser.Scene, text: string, style: SfxStyleName, latin: boolean): string {
+export function sfxWordTexture(
+  scene: Phaser.Scene,
+  text: string,
+  style: SfxStyleName,
+  latin: boolean,
+): string {
   const key = `sfx:${style}:${text}`;
   if (scene.textures.exists(key)) return key;
   const st = SFX_STYLES[style];
@@ -64,7 +70,7 @@ export function sfxWordTexture(scene: Phaser.Scene, text: string, style: SfxStyl
   ctx.globalCompositeOperation = 'source-atop';
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.fillRect(-canvas.width, -canvas.height / 2, canvas.width * 2, canvas.height * 0.28);
-  scene.textures.addCanvas(key, canvas);
+  putCanvas(scene.textures, key, canvas);
   return key;
 }
 
@@ -73,12 +79,27 @@ interface WordItem {
   born: number;
 }
 
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function overlap(a: Box, b: Box): number {
+  const ox = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const oy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return ox * oy;
+}
+
 export class Juice {
   private words: WordItem[] = [];
   private flashTimes: number[] = [];
   private hitStopUntil = 0;
   reduced = false;
   sfxLatin = true;
+  /** Рамки героя и кобольдов: слова-звуки их не закрывают (9.1.4). */
+  avoid: () => Box[] = () => [];
   private readonly sparks: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly dust: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly debris: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
@@ -174,7 +195,14 @@ export class Juice {
     if (this.reduced) return;
     for (const cam of this.cams) {
       const base = cam.zoom;
-      this.scene.tweens.add({ targets: cam, zoom: base * z, duration: ms / 2, yoyo: true, ease: 'Quad.easeOut', onComplete: () => cam.setZoom(base) });
+      this.scene.tweens.add({
+        targets: cam,
+        zoom: base * z,
+        duration: ms / 2,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+        onComplete: () => cam.setZoom(base),
+      });
     }
   }
 
@@ -182,7 +210,13 @@ export class Juice {
    * Слово-звук над событием со смещением вверх; одновременно не больше трёх (9.1.4).
    * Возвращает изображение (или null, если места нет и слово неважное).
    */
-  word(text: string, x: number, y: number, style: SfxStyleName, opts: { important?: boolean; hold?: number } = {}): Phaser.GameObjects.Image | null {
+  word(
+    text: string,
+    x: number,
+    y: number,
+    style: SfxStyleName,
+    opts: { important?: boolean; hold?: number } = {},
+  ): Phaser.GameObjects.Image | null {
     const now = this.scene.time.now;
     this.words = this.words.filter((w) => w.img.active);
     if (this.words.length >= A.maxSfxWords) {
@@ -191,7 +225,37 @@ export class Juice {
       oldest?.img.destroy();
     }
     const key = sfxWordTexture(this.scene, text, style, this.sfxLatin);
-    const img = this.scene.add.image(x, y - CELL * 0.85, key).setScale(this.ts);
+    const src = this.scene.textures.get(key).getSourceImage() as HTMLCanvasElement;
+    const ww = src.width * this.ts * 0.8;
+    const wh = src.height * this.ts * 0.6;
+    // Кандидаты: над событием, выше, сбоку, ниже. Берём первое место без перекрытий.
+    const cands = [
+      { x, y: y - CELL * 0.85 },
+      { x, y: y - CELL * 1.4 },
+      { x: x + CELL * 1.05, y: y - CELL * 0.55 },
+      { x: x - CELL * 1.05, y: y - CELL * 0.55 },
+      { x, y: y + CELL * 0.6 },
+      { x, y: y - CELL * 1.95 },
+    ];
+    const blockers = [
+      ...this.avoid(),
+      ...this.words
+        .filter((w2) => w2.img.active)
+        .map((w2) => ({ x: w2.img.x - ww / 2, y: w2.img.y - wh / 2, w: ww, h: wh })),
+    ];
+    let best = cands[0];
+    let bestOv = Infinity;
+    for (const c of cands) {
+      const box = { x: c.x - ww / 2, y: c.y - wh / 2, w: ww, h: wh };
+      let ov = 0;
+      for (const b of blockers) ov += overlap(box, b);
+      if (ov < bestOv - 1) {
+        bestOv = ov;
+        best = c;
+      }
+      if (ov === 0) break;
+    }
+    const img = this.scene.add.image(best.x, best.y, key).setScale(this.ts).setDepth(10);
     img.setAngle(-6 + Math.random() * 12);
     this.layers.ui.add(img);
     const item = { img, born: now };

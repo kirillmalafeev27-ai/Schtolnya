@@ -27,16 +27,7 @@ export function bakeFloor(
     const y = cy(g, i) * cellPx;
     const v = decor.variants[i] % FLOOR_VARIANTS;
     const src = textures.get(ART.floor(v)).getSourceImage() as HTMLCanvasElement;
-    ctx.save();
-    // Поворот плитки на 180° через раз — меньше заметных повторов.
-    if (decor.variants[i] & 1) {
-      ctx.translate(x + cellPx, y + cellPx);
-      ctx.rotate(Math.PI);
-      ctx.drawImage(src, 0, 0, cellPx, cellPx);
-    } else {
-      ctx.drawImage(src, x, y, cellPx, cellPx);
-    }
-    ctx.restore();
+    ctx.drawImage(src, x, y, cellPx, cellPx);
     const tone = (rnd() - 0.5) * 0.12;
     ctx.fillStyle = tone > 0 ? rgba(P.floor.light, tone) : rgba(P.ink, -tone);
     ctx.fillRect(x, y, cellPx, cellPx);

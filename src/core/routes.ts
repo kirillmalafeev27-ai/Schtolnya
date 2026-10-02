@@ -73,7 +73,8 @@ export function minRoute(g: Grid, start: number, vein: number): RouteInfo | null
   let best = -1;
   for (const t of veinTargets(g, vein)) {
     if (!isFinite(blasts[t])) continue;
-    if (best < 0 || blasts[t] < blasts[best] || (blasts[t] === blasts[best] && steps[t] < steps[best])) best = t;
+    if (best < 0 || blasts[t] < blasts[best] || (blasts[t] === blasts[best] && steps[t] < steps[best]))
+      best = t;
   }
   if (best < 0) return null;
   const route: number[] = [];
@@ -143,7 +144,8 @@ export function findDilemma(
   minShorter: number,
 ): Dilemma {
   const info = minRoute(g, start, vein);
-  if (!info || !isFinite(kMin)) return { exists: false, minSteps: Infinity, altBlasts: -1, altSteps: Infinity };
+  if (!info || !isFinite(kMin))
+    return { exists: false, minSteps: Infinity, altBlasts: -1, altSteps: Infinity };
   const byBudget = stepsByBudget(g, start, vein, Math.max(maxBlasts, kMin));
   let altBlasts = -1;
   let altSteps = Infinity;
@@ -165,7 +167,11 @@ export function openRegion(g: Grid, start: number): Int32Array {
  * Сколько ещё взрывов нужно от клетки до ближайшей цели (стоимость самой клетки не входит).
  * Вместе с blastDist от старта даёт множество клеток, лежащих на каком-нибудь самом дешёвом маршруте.
  */
-export function remainingCost(g: Grid, targets: readonly number[], cost: (i: number) => number): Float64Array {
+export function remainingCost(
+  g: Grid,
+  targets: readonly number[],
+  cost: (i: number) => number,
+): Float64Array {
   const n = g.w * g.h;
   const dist = new Float64Array(n).fill(Infinity);
   const buckets: number[][] = [[]];

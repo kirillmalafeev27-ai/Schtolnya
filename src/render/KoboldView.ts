@@ -98,7 +98,9 @@ export class KoboldView {
     const sleeping = mode === 'sleep';
     this.body.setVisible(!sleeping);
     this.sleeper.setVisible(sleeping);
-    this.head.setTexture(mode === 'stunned' ? ART.koboldHeadSooty : anger > 0 ? ART.koboldHeadAngry : ART.koboldHead);
+    this.head.setTexture(
+      mode === 'stunned' ? ART.koboldHeadSooty : anger > 0 ? ART.koboldHeadAngry : ART.koboldHead,
+    );
     // Злее после оглушения — краснеет (7.5.13).
     const angry = anger > 0 && mode !== 'stunned';
     for (const p of [this.torso, this.head]) {
@@ -111,7 +113,13 @@ export class KoboldView {
     for (const st of this.steam) st.setVisible(angry && !reduced);
     if (mode === 'stunned') {
       this.body.setAngle(0);
-      if (!reduced) this.scene.tweens.add({ targets: this.body, scaleY: { from: 1, to: 0.82 }, duration: 160, ease: 'Back.easeOut' });
+      if (!reduced)
+        this.scene.tweens.add({
+          targets: this.body,
+          scaleY: { from: 1, to: 0.82 },
+          duration: 160,
+          ease: 'Back.easeOut',
+        });
       else this.body.scaleY = 0.82;
     } else if (prev === 'stunned') {
       this.body.scaleY = 1;
@@ -126,7 +134,14 @@ export class KoboldView {
     if (reduced) return;
     this.body.y = CELL * 0.1;
     this.scene.tweens.add({ targets: this.body, y: 0, duration: 260, ease: 'Back.easeOut' });
-    this.scene.tweens.add({ targets: this.head, angle: { from: -12, to: 12 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => this.head.setAngle(0) });
+    this.scene.tweens.add({
+      targets: this.head,
+      angle: { from: -12, to: 12 },
+      duration: 90,
+      yoyo: true,
+      repeat: 3,
+      onComplete: () => this.head.setAngle(0),
+    });
   }
 
   /** Приседает за 150 мс до шага — видимый сигнал для приманки (2.4.4). */
@@ -136,7 +151,13 @@ export class KoboldView {
       this.body.scaleY = 0.86;
       return;
     }
-    this.crouchTween = this.scene.tweens.add({ targets: this.body, scaleY: 0.78, scaleX: this.facing * 1.14, duration: A.koboldCrouchMs, ease: 'Quad.easeOut' });
+    this.crouchTween = this.scene.tweens.add({
+      targets: this.body,
+      scaleY: 0.78,
+      scaleX: this.facing * 1.14,
+      duration: A.koboldCrouchMs,
+      ease: 'Quad.easeOut',
+    });
   }
 
   step(to: number, reduced: boolean): void {
@@ -156,15 +177,32 @@ export class KoboldView {
       onComplete: () => this.sync(),
     });
     if (!reduced) {
-      this.scene.tweens.add({ targets: this.body, y: { from: 0, to: -CELL * 0.1 }, duration: A.stepMs * 0.6, yoyo: true, ease: 'Quad.easeOut' });
-      this.scene.tweens.add({ targets: this.body, scaleY: { from: 1.12, to: 1 }, duration: A.stepMs * 1.4, ease: 'Back.easeOut' });
+      this.scene.tweens.add({
+        targets: this.body,
+        y: { from: 0, to: -CELL * 0.1 },
+        duration: A.stepMs * 0.6,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+      });
+      this.scene.tweens.add({
+        targets: this.body,
+        scaleY: { from: 1.12, to: 1 },
+        duration: A.stepMs * 1.4,
+        ease: 'Back.easeOut',
+      });
     }
   }
 
   /** Поймал героя — «HAB DICH!»: тянется вверх. */
   grab(reduced: boolean): void {
     if (reduced) return;
-    this.scene.tweens.add({ targets: this.body, scaleY: 1.15, angle: this.facing * -8, duration: 200, ease: 'Back.easeOut' });
+    this.scene.tweens.add({
+      targets: this.body,
+      scaleY: 1.15,
+      angle: this.facing * -8,
+      duration: 200,
+      ease: 'Back.easeOut',
+    });
   }
 
   update(time: number, reduced: boolean): void {
@@ -173,7 +211,11 @@ export class KoboldView {
       this.waddle += 0.09;
       this.body.setAngle(Math.sin(this.waddle) * 4);
     }
-    if (this.mode === 'sleep' && !reduced) this.sleeper.setScale(this.ts * (1 + Math.sin(time / 700) * 0.03), this.ts * (1 - Math.sin(time / 700) * 0.04));
+    if (this.mode === 'sleep' && !reduced)
+      this.sleeper.setScale(
+        this.ts * (1 + Math.sin(time / 700) * 0.03),
+        this.ts * (1 - Math.sin(time / 700) * 0.04),
+      );
     // Звёздочки вокруг головы оглушённого.
     if (this.mode === 'stunned') {
       const h = this.headWorld();
@@ -188,7 +230,7 @@ export class KoboldView {
     if (this.anger > 0 && this.mode === 'awake' && !reduced) {
       const h = this.headWorld();
       this.steam.forEach((st, k) => {
-        const t = ((time / 900 + k * 0.5) % 1 + 1) % 1;
+        const t = (((time / 900 + k * 0.5) % 1) + 1) % 1;
         st.setPosition(h.x + (k ? 1 : -1) * CELL * (0.36 + t * 0.2), h.y + CELL * 0.26 - t * CELL * 0.4);
         st.setAlpha(0.7 * (1 - t)).setScale(this.ts * (0.6 + t));
       });

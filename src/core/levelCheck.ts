@@ -11,10 +11,12 @@ export function validateLevel(def: LevelDef, lvl: GeneratedLevel): string[] {
   const g = lvl.grid;
   if (g.w % 2 !== 1 || g.h % 2 !== 1) errors.push('стороны сетки должны быть нечётными');
   for (let i = 0; i < g.cells.length; i++) {
-    if (isBorder(g, i) && i !== lvl.lift && g.cells[i] !== Cell.BEDROCK) errors.push(`кольцо не скала в ${i}`);
+    if (isBorder(g, i) && i !== lvl.lift && g.cells[i] !== Cell.BEDROCK)
+      errors.push(`кольцо не скала в ${i}`);
   }
   if (g.cells[lvl.lift] !== Cell.LIFT || cy(g, lvl.lift) !== 0) errors.push('подъёмник не в верхней стене');
-  if (lvl.start !== lvl.lift + g.w || g.cells[lvl.start] !== Cell.FLOOR) errors.push('старт не под подъёмником');
+  if (lvl.start !== lvl.lift + g.w || g.cells[lvl.start] !== Cell.FLOOR)
+    errors.push('старт не под подъёмником');
   if (cx(g, lvl.start) % 2 !== 1) errors.push('старт не узел');
   if (g.cells[lvl.vein] !== Cell.VEIN || isBorder(g, lvl.vein)) errors.push('жила не на месте');
   if (lvl.lairs.length !== def.kobolds) errors.push('число логов не совпадает с числом кобольдов');

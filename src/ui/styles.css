@@ -4,7 +4,12 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family:
+    'Rubik',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   color: var(--ink);
   background-color: var(--page);
   background-image:
@@ -31,8 +36,10 @@
 
 .mine__page {
   position: absolute;
-  inset: calc(var(--gutter) + env(safe-area-inset-top, 0px)) calc(var(--gutter) + env(safe-area-inset-right, 0px))
-    calc(var(--gutter) + env(safe-area-inset-bottom, 0px)) calc(var(--gutter) + env(safe-area-inset-left, 0px));
+  inset: calc(var(--gutter) + env(safe-area-inset-top, 0px))
+    calc(var(--gutter) + env(safe-area-inset-right, 0px))
+    calc(var(--gutter) + env(safe-area-inset-bottom, 0px))
+    calc(var(--gutter) + env(safe-area-inset-left, 0px));
   display: grid;
   gap: calc(var(--gutter) + 3px);
 }
@@ -334,7 +341,10 @@
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  font: 700 11px/18px 'Rubik', system-ui, sans-serif;
+  font:
+    700 11px/18px 'Rubik',
+    system-ui,
+    sans-serif;
   color: var(--panel);
   background: var(--ink);
   border-radius: 9px;
@@ -682,7 +692,9 @@
 
 .gear__btn kbd {
   display: none;
-  font: 700 10px/14px 'Rubik', sans-serif;
+  font:
+    700 10px/14px 'Rubik',
+    sans-serif;
   padding: 0 4px;
   color: var(--panel);
   background: var(--ink);

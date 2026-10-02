@@ -49,7 +49,15 @@ class Pool {
       this.items.push(im);
     }
     this.used++;
-    return im.setTexture(key).setPosition(x, y).setVisible(true).setAlpha(1).setScale(this.ts).setAngle(0).setOrigin(0.5, 0.5).setDepth(0);
+    return im
+      .setTexture(key)
+      .setPosition(x, y)
+      .setVisible(true)
+      .setAlpha(1)
+      .setScale(this.ts)
+      .setAngle(0)
+      .setOrigin(0.5, 0.5)
+      .setDepth(0);
   }
   end(): void {
     for (let k = this.used; k < this.items.length; k++) this.items[k].setVisible(false);
@@ -72,6 +80,7 @@ export class HintsView {
   private readonly route: Pool;
   private readonly paws: Pool;
   private readonly targets: Pool;
+  private readonly rings: Pool;
   private ghost: Phaser.GameObjects.Image;
   private pulse = 0;
   private burning = false;
@@ -88,7 +97,13 @@ export class HintsView {
     this.marks = new Pool(scene, layers.ui, ts);
     this.paws = new Pool(scene, layers.ui, ts);
     this.targets = new Pool(scene, layers.ui, ts);
-    this.ghost = scene.add.image(0, 0, ART.ghost).setScale(ts).setOrigin(0.5, 0.92).setVisible(false);
+    this.rings = new Pool(scene, layers.ui, ts);
+    this.ghost = scene.add
+      .image(0, 0, ART.ghost)
+      .setScale(ts)
+      .setOrigin(0.5, 0.92)
+      .setVisible(false)
+      .setDepth(5);
     layers.ui.add(this.ghost);
   }
 
@@ -103,34 +118,56 @@ export class HintsView {
     this.route.begin();
     this.paws.begin();
     this.targets.begin();
+    this.rings.begin();
     this.ghost.setVisible(false);
     if (s.status !== 'playing') {
-      for (const p of [this.tape, this.marks, this.route, this.paws, this.targets]) p.end();
+      for (const p of [this.tape, this.marks, this.route, this.paws, this.targets, this.rings]) p.end();
       return info;
     }
+    // Клетки, где стоят персонажи: лента там не закрывает фигуру — под ногами кольцо опасности.
+    const occupied = new Set<number>([h.cell, ...s.kobolds.map((k) => k.cell)]);
 
     // Крест: горящей шашки — всегда; будущий — при намерении «заложить», если уровень разрешает (2.8.1).
     let crossOrigin = -1;
     this.burning = !!s.fuse;
     if (s.fuse) crossOrigin = s.fuse.cell;
     else if (f.preview && h.intent.kind === 'plant' && h.sticks > 0) crossOrigin = h.intent.target;
-    let crossSet: Set<number> | null = null;
     if (crossOrigin >= 0) {
       const cross = blastCross(g, crossOrigin, s.params.blastRange);
-      crossSet = new Set(cross.cells);
+      const crossSet = new Set(cross.cells);
       for (let d = 0; d < 4; d++) {
         let c = crossOrigin;
         for (let k = 1; k <= cross.rays[d]; k++) {
           c = neighbor(g, c, d);
           const key = d % 2 === 0 ? ART.tapeV : ART.tapeH;
-          this.tape.take(key, cellX(g, c), cellY(g, c));
+          if (occupied.has(c)) {
+            // Обрывки ленты у краёв клетки и кольцо под ногами.
+            const vertical = d % 2 === 0;
+            for (const sgn of [-1, 1]) {
+              const st = this.tape.take(
+                key,
+                cellX(g, c) + (vertical ? 0 : sgn * CELL * 0.4),
+                cellY(g, c) + (vertical ? sgn * CELL * 0.4 : 0),
+              );
+              st.setScale(vertical ? this.ts : this.ts * 0.22, vertical ? this.ts * 0.22 : this.ts);
+              st.setDepth(1);
+            }
+            this.rings.take(ART.dangerRing, cellX(g, c), footY(g, c)).setDepth(0.5);
+            continue;
+          }
+          this.tape.take(key, cellX(g, c), cellY(g, c)).setDepth(1);
         }
       }
-      const center = this.tape.take(ART.tapeCenter, cellX(g, crossOrigin), cellY(g, crossOrigin) - CELL * 0.12);
+      const center = this.tape
+        .take(ART.tapeCenter, cellX(g, crossOrigin), cellY(g, crossOrigin) - CELL * 0.12)
+        .setDepth(1);
       center.setData('center', true);
       // Клетка, которая разрушится: трещина; у крепкой породы — «×2».
-      this.marks.take(ART.crackMark, cellX(g, crossOrigin), cellY(g, crossOrigin) - CELL * 0.12);
-      if (g.cells[crossOrigin] === Cell.HARD) this.marks.take(ART.x2, cellX(g, crossOrigin) + CELL * 0.24, cellY(g, crossOrigin) - CELL * 0.4);
+      this.marks.take(ART.crackMark, cellX(g, crossOrigin), cellY(g, crossOrigin) - CELL * 0.12).setDepth(3);
+      if (g.cells[crossOrigin] === Cell.HARD)
+        this.marks
+          .take(ART.x2, cellX(g, crossOrigin) + CELL * 0.26, cellY(g, crossOrigin) - CELL * 0.42)
+          .setDepth(3);
 
       // Укрытия и призрак героя — только для будущей закладки.
       if (!s.fuse && h.intent.kind === 'plant') {
@@ -143,8 +180,16 @@ export class HintsView {
           }
           const sm = shelterMarks(g, stand, crossSet, heroPassable(s));
           if (f.shelters) {
-            for (const c of sm.one) this.marks.take(ART.bootWhite, cellX(g, c), cellY(g, c) + CELL * 0.1).setData('boot', true);
-            for (const c of sm.two) this.marks.take(ART.bootOrange, cellX(g, c), cellY(g, c) + CELL * 0.1).setData('boot', true);
+            for (const c of sm.one)
+              this.marks
+                .take(ART.bootWhite, cellX(g, c), cellY(g, c) + CELL * 0.1)
+                .setData('boot', true)
+                .setDepth(2);
+            for (const c of sm.two)
+              this.marks
+                .take(ART.bootOrange, cellX(g, c), cellY(g, c) + CELL * 0.1)
+                .setData('boot', true)
+                .setDepth(2);
           }
           if (!sm.one.length && !sm.two.length) {
             info.noShelter = true;
@@ -166,7 +211,10 @@ export class HintsView {
         const red = !!burningSet && (burningSet.has(c) || burningSet.has(h.cell));
         for (let k = 1; k <= 2; k++) {
           const t = k / 3;
-          this.route.take(red ? ART.routeDotRed : ART.routeDot, prevX + (x - prevX) * t, prevY + (y - prevY) * t).setAlpha(0.9);
+          this.route
+            .take(red ? ART.routeDotRed : ART.routeDot, prevX + (x - prevX) * t, prevY + (y - prevY) * t)
+            .setAlpha(0.9)
+            .setDepth(2);
         }
         prevX = x;
         prevY = y;
@@ -179,18 +227,20 @@ export class HintsView {
       if (f.paws && k.mode === 'awake') {
         const steps = koboldPreview(s, k, 3);
         steps.forEach((c, i) => {
-          const p = this.paws.take(ART.paw, cellX(g, c) + (i % 2 ? 8 : -8), cellY(g, c) + CELL * 0.12);
+          const p = this.paws
+            .take(ART.paw, cellX(g, c) + (i % 2 ? 8 : -8), cellY(g, c) + CELL * 0.12)
+            .setDepth(2);
           p.setAlpha(0.75 - i * 0.18);
           p.setData('paw', i);
         });
       }
       if (f.target && burningSet && burningSet.has(k.cell)) {
-        const t = this.targets.take(ART.target, cellX(g, k.cell), cellY(g, k.cell) - CELL * 0.62);
+        const t = this.targets.take(ART.target, cellX(g, k.cell), cellY(g, k.cell) - CELL * 0.62).setDepth(6);
         t.setData('target', true);
       }
     }
 
-    for (const p of [this.tape, this.marks, this.route, this.paws, this.targets]) p.end();
+    for (const p of [this.tape, this.marks, this.route, this.paws, this.targets, this.rings]) p.end();
     return info;
   }
 
@@ -204,12 +254,14 @@ export class HintsView {
     this.pulse += (dtMs / 1000) * freq * Math.PI * 2;
     const a = reduced ? 0.85 : 0.72 + Math.sin(this.pulse) * 0.2;
     for (const im of this.tape.active) im.setAlpha(this.burning ? a : 0.62);
+    for (const im of this.rings.active) im.setAlpha(this.burning ? a : 0.7);
     for (const im of this.targets.active) {
       im.setAngle(this.pulse * 12);
       if (!reduced) im.setScale(this.ts * (1 + Math.sin(this.pulse * 1.5) * 0.08));
     }
     if (!reduced) {
-      for (const im of this.marks.active) if (im.getData('boot')) im.setScale(this.ts * (1 + Math.sin(this.pulse * 0.7) * 0.05));
+      for (const im of this.marks.active)
+        if (im.getData('boot')) im.setScale(this.ts * (1 + Math.sin(this.pulse * 0.7) * 0.05));
     }
     if (this.ghost.visible) this.ghost.setAlpha(0.5 + Math.sin(this.pulse * 0.8) * 0.12);
   }

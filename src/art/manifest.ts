@@ -101,6 +101,7 @@ export const ART = {
   routeDot: 'route-dot',
   routeDotRed: 'route-dot-red',
   zzz: 'zzz',
+  dangerRing: 'danger-ring',
   vignette: 'vignette',
 } as const;
 
@@ -111,7 +112,8 @@ function range(n: number): number[] {
 /** Полный список текстур, генерируемых на старте. */
 export function manifest(): ArtEntry[] {
   const e: ArtEntry[] = [];
-  const add = (key: string, w: number, h: number, recipe: string, variant = 0) => e.push({ key, w, h, recipe, variant });
+  const add = (key: string, w: number, h: number, recipe: string, variant = 0) =>
+    e.push({ key, w, h, recipe, variant });
   for (const i of range(FLOOR_VARIANTS)) add(ART.floor(i), 1, 1, 'floor', i);
   add(ART.backdrop, 2, 2, 'backdrop');
   for (const i of range(BEDROCK_VARIANTS)) add(ART.bedrock(i), 1, BLOCK_H, 'bedrock', i);
@@ -125,8 +127,8 @@ export function manifest(): ArtEntry[] {
   add(ART.liftFront, 1.2, 0.6, 'liftFront');
   add(ART.daylight, 2.2, 3.2, 'daylight');
   add(ART.lair, 1.1, 0.8, 'lair');
-  for (const i of range(MUSHROOM_VARIANTS)) add(ART.mushroom(i), 0.4, 0.45, 'mushroom', i);
-  add(ART.timberPost, 0.36, 1.25, 'timberPost');
+  for (const i of range(MUSHROOM_VARIANTS)) add(ART.mushroom(i), 0.28, 0.32, 'mushroom', i);
+  add(ART.timberPost, 0.3, 0.66, 'timberPost');
   add(ART.timberBeam, 1.0, 0.24, 'timberBeam');
   add(ART.lantern, 0.36, 0.52, 'lantern');
   add(ART.stickItem, 0.5, 0.5, 'stickItem');
@@ -164,7 +166,7 @@ export function manifest(): ArtEntry[] {
   add(ART.boom, 1.9, 1.9, 'boom');
   add(ART.flameH, 1.0, 0.8, 'flameH');
   add(ART.flameV, 0.8, 1.0, 'flameV');
-  add(ART.flameEnd, 0.8, 0.8, 'flameEnd');
+  add(ART.flameEnd, 1.0, 0.8, 'flameEnd');
   for (const i of range(DEBRIS_VARIANTS)) add(ART.debris(i), 0.24, 0.22, 'debris', i);
   for (const i of range(SMOKE_VARIANTS)) add(ART.smoke(i), 0.9, 0.8, 'smoke', i);
   add(ART.spark, 0.14, 0.14, 'spark');
@@ -185,6 +187,7 @@ export function manifest(): ArtEntry[] {
   add(ART.routeDot, 0.14, 0.14, 'routeDot', 0);
   add(ART.routeDotRed, 0.14, 0.14, 'routeDot', 1);
   add(ART.zzz, 1.2, 0.5, 'zzz');
+  add(ART.dangerRing, 0.86, 0.4, 'dangerRing');
   add(ART.vignette, 4, 4, 'vignette');
   return e;
 }

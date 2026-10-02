@@ -179,7 +179,8 @@ export class QuestionPanel {
       this.stage.appendChild(card);
     }
     // Тестовый крючок: сквозной тест знает верный вариант (только при флаге __MINE_TEST__).
-    if ((window as unknown as { __MINE_TEST__?: boolean }).__MINE_TEST__) this.el.dataset.testCorrect = String(q.correctIndex);
+    if ((window as unknown as { __MINE_TEST__?: boolean }).__MINE_TEST__)
+      this.el.dataset.testCorrect = String(q.correctIndex);
     this.feedback = false;
     this.activeMs = 0;
     this.activeSince = -1;
@@ -234,7 +235,10 @@ export class QuestionPanel {
     const { fontMaxPx, fontMinPx } = this.timings;
     let size = fontMaxPx;
     prompt.style.fontSize = `${size}px`;
-    while (size > fontMinPx && (prompt.scrollWidth > task.clientWidth + 1 || prompt.scrollHeight > task.clientHeight + 1)) {
+    while (
+      size > fontMinPx &&
+      (prompt.scrollWidth > task.clientWidth + 1 || prompt.scrollHeight > task.clientHeight + 1)
+    ) {
       size -= 1;
       prompt.style.fontSize = `${size}px`;
     }

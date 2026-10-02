@@ -5,7 +5,10 @@ import { ru } from '../../i18n/ru';
 export class PauseScreen {
   readonly el: HTMLElement;
 
-  constructor(host: HTMLElement, h: { onResume: () => void; onRestart: () => void; onMenu: () => void; onSettings: () => void }) {
+  constructor(
+    host: HTMLElement,
+    h: { onResume: () => void; onRestart: () => void; onMenu: () => void; onSettings: () => void },
+  ) {
     const P = ru.pause;
     this.el = document.createElement('div');
     this.el.className = 'pause';

@@ -1,14 +1,26 @@
 import { chromium } from 'playwright-core';
 const url = process.argv[2] || 'http://localhost:5173/';
 const out = process.argv[3] || 'shots/smoke.png';
-const w = +(process.argv[4] || 390), h = +(process.argv[5] || 844);
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });
+const w = +(process.argv[4] || 390),
+  h = +(process.argv[5] || 844);
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+});
+const dpr = +(process.argv[7] || 1);
+const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: dpr });
 const logs = [];
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 await page.goto(url, { waitUntil: 'networkidle' });
 await page.waitForTimeout(+(process.argv[6] || 1500));
+const fps = await page
+  .evaluate(() => {
+    const g = window.mine?.app?.game;
+    return g ? `frames=${g.loop.frame} fps=${g.loop.actualFps.toFixed(1)}` : 'no game';
+  })
+  .catch(() => 'n/a');
+logs.push(fps);
 await page.screenshot({ path: out });
 console.log(logs.join('\n'));
 await browser.close();

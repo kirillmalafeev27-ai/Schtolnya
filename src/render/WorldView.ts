@@ -2,8 +2,19 @@
 // Только читает состояние и реагирует на события.
 
 import Phaser from 'phaser';
-import { ART, BEDROCK_VARIANTS, BLOCK_H, CRACKED_VARIANTS, DEBRIS_VARIANTS, HARD_VARIANTS, POCKET_VARIANTS, ROCK_VARIANTS, VEIN_VARIANTS } from '../art/manifest';
+import {
+  ART,
+  BEDROCK_VARIANTS,
+  BLOCK_H,
+  CRACKED_VARIANTS,
+  DEBRIS_VARIANTS,
+  HARD_VARIANTS,
+  POCKET_VARIANTS,
+  ROCK_VARIANTS,
+  VEIN_VARIANTS,
+} from '../art/manifest';
 import { bakeFloor } from '../art/floorBake';
+import { putCanvas } from '../art/ArtFactory';
 import { balance } from '../config/balance';
 import { hex, palette as P } from '../config/palette';
 import { Cell, cx, cy, dirTo, type Grid } from '../core/grid';
@@ -71,8 +82,7 @@ export class WorldView {
     // 1: запечённый пол.
     this.floorKey = `${ART.floorBaked}-${this.uid}`;
     const canvas = bakeFloor(this.scene.textures, g, this.decor, texCellPx, this.state.seed);
-    if (this.scene.textures.exists(this.floorKey)) this.scene.textures.remove(this.floorKey);
-    this.scene.textures.addCanvas(this.floorKey, canvas);
+    putCanvas(this.scene.textures, this.floorKey, canvas);
     this.floorImage = this.scene.add.image(0, 0, this.floorKey).setOrigin(0, 0).setScale(this.texScale);
     L.floor.add(this.floorImage);
 
@@ -82,7 +92,9 @@ export class WorldView {
     // Подъёмник: клеть в верхней стене, свет дня из ствола.
     const lx = cellX(g, this.state.lift);
     const ly = baseY(g, this.state.lift);
-    this.daylight = this.img(lx, ly + CELL * 0.35, ART.daylight, L.floor).setOrigin(0.5, 1).setAlpha(0.9);
+    this.daylight = this.img(lx, ly + CELL * 0.35, ART.daylight, L.floor)
+      .setOrigin(0.5, 1)
+      .setAlpha(0.9);
     this.daylight.setBlendMode(Phaser.BlendModes.ADD);
     this.liftImage = this.img(lx, ly + CELL * 0.08, ART.lift, L.obj).setOrigin(0.5, 1);
     this.liftImage.setDepth(ly - CELL * 0.5);
@@ -91,7 +103,10 @@ export class WorldView {
 
     // Логово кобольда: гнездо и светящиеся грибы.
     for (const lair of this.state.lairs) {
-      const nest = this.img(cellX(g, lair), footY(g, lair) + CELL * 0.1, ART.lair, L.floor).setOrigin(0.5, 0.7);
+      const nest = this.img(cellX(g, lair), footY(g, lair) + CELL * 0.1, ART.lair, L.floor).setOrigin(
+        0.5,
+        0.7,
+      );
       this.lairs.push(nest);
       for (let k = 0; k < 3; k++) {
         const ang = (k / 3) * Math.PI * 2 + (lair % 7);
@@ -111,9 +126,9 @@ export class WorldView {
     }
     for (const l of this.decor.lanterns) {
       const { x, y, depth } = this.postPos(l.cell, l.side);
-      const lan = this.img(x, y - CELL * 0.95, ART.lantern, L.obj).setOrigin(0.5, 0.1);
+      const lan = this.img(x, y - CELL * 0.6, ART.lantern, L.obj).setOrigin(0.5, 0.08);
       lan.setDepth(depth + 1);
-      this.lanternSprites.push({ img: lan, x, y: y - CELL * 0.72, phase: l.phase });
+      this.lanternSprites.push({ img: lan, x, y: y - CELL * 0.38, phase: l.phase });
     }
 
     // Предметы на полу.
@@ -126,9 +141,9 @@ export class WorldView {
     const g = this.g;
     const x0 = cellX(g, cell);
     const top = cy(g, cell) * CELL;
-    if (side === 'n') return { x: x0 + CELL * 0.28, y: top + CELL * 0.16, depth: top + CELL * 0.16 };
-    const dx = side === 'w' ? -0.4 : 0.4;
-    return { x: x0 + dx * CELL, y: top + CELL * 0.62, depth: top + CELL * 0.62 };
+    if (side === 'n') return { x: x0 + CELL * 0.3, y: top + CELL * 0.2, depth: top + CELL * 0.2 };
+    const dx = side === 'w' ? -0.38 : 0.38;
+    return { x: x0 + dx * CELL, y: top + CELL * 0.6, depth: top + CELL * 0.6 };
   }
 
   private blockKey(i: number): string | null {
@@ -205,7 +220,12 @@ export class WorldView {
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2 + this.decor.variants[i];
       const r = CELL * (0.18 + ((k * 37) % 10) / 40);
-      this.img(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.6, ART.rubble((i + k) % DEBRIS_VARIANTS), this.layers.floor).setRotation(a);
+      this.img(
+        x + Math.cos(a) * r,
+        y + Math.sin(a) * r * 0.6,
+        ART.rubble((i + k) % DEBRIS_VARIANTS),
+        this.layers.floor,
+      ).setRotation(a);
     }
   }
 
@@ -269,7 +289,8 @@ export class WorldView {
     }
     this.fusePath = pts;
     this.fuseLen = 0;
-    for (let k = 1; k < pts.length; k++) this.fuseLen += Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y);
+    for (let k = 1; k < pts.length; k++)
+      this.fuseLen += Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y);
     this.fuseGfx.setDepth(footY(g, stand) - CELL * 0.3);
     this.fuseSpark = this.img(pts[pts.length - 1].x, pts[pts.length - 1].y, ART.fuseSpark, this.layers.fx);
     this.fuseSpark.setBlendMode(Phaser.BlendModes.ADD);
@@ -293,7 +314,10 @@ export class WorldView {
         unburned.push(pts[k]);
       } else if (acc < lit) {
         const t = (lit - acc) / seg;
-        sparkPt = { x: pts[k - 1].x + (pts[k].x - pts[k - 1].x) * t, y: pts[k - 1].y + (pts[k].y - pts[k - 1].y) * t };
+        sparkPt = {
+          x: pts[k - 1].x + (pts[k].x - pts[k - 1].x) * t,
+          y: pts[k - 1].y + (pts[k].y - pts[k - 1].y) * t,
+        };
         unburned.push(sparkPt);
         burned.push(sparkPt, pts[k]);
       } else {
@@ -316,7 +340,10 @@ export class WorldView {
     line(unburned, w * 2.2, hex(P.ink));
     line(unburned, w * 1.1, hex(P.timber.light));
     const flick = 0.85 + Math.sin(time * 0.06) * 0.15 + Math.random() * 0.15;
-    this.fuseSpark.setPosition(sparkPt.x, sparkPt.y).setScale(this.texScale * flick).setRotation(time * 0.02);
+    this.fuseSpark
+      .setPosition(sparkPt.x, sparkPt.y)
+      .setScale(this.texScale * flick)
+      .setRotation(time * 0.02);
     return sparkPt;
   }
 
@@ -334,7 +361,9 @@ export class WorldView {
   update(time: number, delta: number, reduced: boolean): void {
     // Фонари чуть покачиваются.
     for (const l of this.lanternSprites) {
-      l.img.setRotation(reduced ? 0 : Math.sin(time / 900 + l.phase) * Phaser.Math.DegToRad(balance.light.lanterns.swingDeg));
+      l.img.setRotation(
+        reduced ? 0 : Math.sin(time / 900 + l.phase) * Phaser.Math.DegToRad(balance.light.lanterns.swingDeg),
+      );
     }
     // Предметы на полу слегка покачиваются.
     for (const c of this.items.values()) {
@@ -361,7 +390,12 @@ export class WorldView {
     const g = this.g;
     let sp = this.pocketSparks.get(cell);
     if (!sp) {
-      sp = this.img(cellX(g, cell) + CELL * 0.08, cellY(g, cell) - CELL * 0.12, ART.pocketSpark, this.layers.fx);
+      sp = this.img(
+        cellX(g, cell) + CELL * 0.08,
+        cellY(g, cell) - CELL * 0.12,
+        ART.pocketSpark,
+        this.layers.fx,
+      );
       sp.setBlendMode(Phaser.BlendModes.ADD);
       this.pocketSparks.set(cell, sp);
     }

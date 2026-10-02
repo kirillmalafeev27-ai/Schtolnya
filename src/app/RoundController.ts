@@ -118,7 +118,8 @@ export class RoundController {
   /** Отладка: +N шашек. */
   debugAddSticks(n: number): void {
     this.state = { ...this.state, hero: { ...this.state.hero, sticks: this.state.hero.sticks + n } };
-    for (const fn of this.listeners) fn([{ type: 'INTENT', intent: this.state.hero.intent, auto: true }], this.state);
+    for (const fn of this.listeners)
+      fn([{ type: 'INTENT', intent: this.state.hero.intent, auto: true }], this.state);
   }
 
   /** Отладка: усыпить или разбудить кобольдов. */

@@ -18,6 +18,7 @@ export interface MountOptions {
   questions: QuestionProvider;
   storage?: KeyValueStorage;
   level?: number;
+  seed?: number;
   onFinish?: (r: FinishInfo) => void;
 }
 

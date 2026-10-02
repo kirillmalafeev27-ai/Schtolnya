@@ -18,6 +18,7 @@ const provider = new LocalBankProvider(bank as Question[], {
 const mounted = mountMine(document.getElementById('app')!, {
   questions: provider,
   level: params.has('level') ? Number(params.get('level')) : undefined,
+  seed: params.has('seed') ? Number(params.get('seed')) : undefined,
 });
 
 // Для отладки и сквозных тестов.

@@ -70,7 +70,8 @@ function routeToVein(s: GameState, mode: 'minBlasts' | 'minSteps', budget: numbe
     let best = -1;
     for (const t of targets) {
       if (!isFinite(blasts[t])) continue;
-      if (best < 0 || blasts[t] < blasts[best] || (blasts[t] === blasts[best] && steps[t] < steps[best])) best = t;
+      if (best < 0 || blasts[t] < blasts[best] || (blasts[t] === blasts[best] && steps[t] < steps[best]))
+        best = t;
     }
     if (best < 0) return null;
     const path: number[] = [];
@@ -139,7 +140,11 @@ function shelterStepsFrom(s: GameState, stand: number, rock: number): number {
 function koboldDistField(s: GameState): Int32Array | null {
   const ks = awakeKobolds(s);
   if (!ks.length) return null;
-  return bfsDist(s.grid, ks.map((k) => k.cell), (i) => s.grid.cells[i] === Cell.FLOOR);
+  return bfsDist(
+    s.grid,
+    ks.map((k) => k.cell),
+    (i) => s.grid.cells[i] === Cell.FLOOR,
+  );
 }
 
 /** Бегство: бодрствующий кобольд вплотную — уйти на соседнюю клетку, где до него дальше всего. */
@@ -167,7 +172,11 @@ function flee(s: GameState, kd: Int32Array | null, avoid?: Set<number>): BotDeci
 function nextStepUnsafe(s: GameState, d: BotDecision, kd: Int32Array | null): boolean {
   if (!kd || d.kind === 'stay') return false;
   const intent =
-    d.kind === 'move' ? { kind: 'move' as const, target: d.cell! } : d.kind === 'plant' ? { kind: 'plant' as const, target: d.cell! } : { kind: 'home' as const };
+    d.kind === 'move'
+      ? { kind: 'move' as const, target: d.cell! }
+      : d.kind === 'plant'
+        ? { kind: 'plant' as const, target: d.cell! }
+        : { kind: 'home' as const };
   if (d.kind === 'plant' && manhattan(s.grid, s.hero.cell, d.cell!) === 1) return false;
   const route = heroRoute(s, intent);
   if (!route || !route.length) return false;
@@ -258,7 +267,8 @@ function followPath(bot: BotKind, s: GameState, path: number[]): BotDecision | n
   const obstacle = firstObstacle(g, path);
   if (obstacle < 0) {
     const end = path[path.length - 1];
-    if (s.hero.cell === end || manhattan(g, s.hero.cell, s.vein) === 1) return want(s, { kind: 'plant', cell: s.vein });
+    if (s.hero.cell === end || manhattan(g, s.hero.cell, s.vein) === 1)
+      return want(s, { kind: 'plant', cell: s.vein });
     return want(s, { kind: 'move', cell: end });
   }
   if (bot === 'cautious' || bot === 'lure') {

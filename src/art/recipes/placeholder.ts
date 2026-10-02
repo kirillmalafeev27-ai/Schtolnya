@@ -15,7 +15,12 @@ const circle = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number, 
   ctx.fill();
 };
 
-const block = (fillTop: string, fillFront: string, mark?: (ctx: CanvasRenderingContext2D, w: number, h: number) => void): Recipe =>
+const block =
+  (
+    fillTop: string,
+    fillFront: string,
+    mark?: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
+  ): Recipe =>
   (ctx, w, h) => {
     const front = h - w;
     rect(ctx, 0, 0, w, h - front, fillTop);
@@ -130,7 +135,8 @@ export const placeholderRecipes: Record<string, Recipe> = {
   heroPouch: (ctx, w, h, _c, v) => circle(ctx, w / 2, h / 2, w * 0.4, v ? '#e0c040' : '#807060'),
   heroBeltStick: (ctx, w, h) => rect(ctx, 0, 0, w, h, '#c06060'),
   koboldBody: (ctx, w, h) => circle(ctx, w / 2, h / 2, h * 0.45, '#6a8a5a'),
-  koboldHead: (ctx, w, h, _c, v) => circle(ctx, w / 2, h / 2, h * 0.42, v === 1 ? '#8a6a5a' : v === 2 ? '#444' : '#7a9a6a'),
+  koboldHead: (ctx, w, h, _c, v) =>
+    circle(ctx, w / 2, h / 2, h * 0.42, v === 1 ? '#8a6a5a' : v === 2 ? '#444' : '#7a9a6a'),
   koboldSleep: (ctx, w, h) => circle(ctx, w / 2, h * 0.55, h * 0.4, '#6a8a5a'),
   koboldFoot: (ctx, w, h) => rect(ctx, 0, 0, w, h, '#4a6a3a'),
   koboldEyes: (ctx, w, h) => {

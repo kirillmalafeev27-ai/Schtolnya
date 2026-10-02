@@ -18,10 +18,15 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     const cfg = this.registry.get('bootConfig') as BootConfig;
     const factory = new ArtFactory(this.textures, cfg.cellPx, cfg.recipes);
-    void factory.generateAll(cfg.onProgress).then((report) => {
-      this.registry.set('artFactory', factory);
-      this.scene.start('Game');
-      cfg.onDone(report);
-    });
+    factory
+      .generateAll(cfg.onProgress)
+      .then((report) => {
+        this.registry.set('artFactory', factory);
+        this.scene.start('Game');
+        cfg.onDone(report);
+      })
+      .catch((e: unknown) => {
+        console.error('BootScene: генерация арта упала', e);
+      });
   }
 }

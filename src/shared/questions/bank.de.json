@@ -1,66 +1,486 @@
 [
-  { "id": "art-001", "prompt": "___ Tisch", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "art-002", "prompt": "___ Lampe", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 1 },
-  { "id": "art-003", "prompt": "___ Bergwerk", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 2 },
-  { "id": "art-004", "prompt": "___ Höhle", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 1 },
-  { "id": "art-005", "prompt": "___ Schatz", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "art-006", "prompt": "___ Gold", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 2 },
-  { "id": "art-007", "prompt": "___ Stein", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "art-008", "prompt": "___ Kerze", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 1 },
-  { "id": "art-009", "prompt": "___ Fenster", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 2 },
-  { "id": "art-010", "prompt": "___ Mädchen", "promptLang": "de", "options": ["das", "die"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "art-011", "prompt": "___ Hammer", "promptLang": "de", "options": ["der", "die", "das"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "art-012", "prompt": "___ Messer", "promptLang": "de", "options": ["das", "der"], "optionsLang": "de", "correctIndex": 0 },
+  {
+    "id": "art-001",
+    "prompt": "___ Tisch",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "art-002",
+    "prompt": "___ Lampe",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 1
+  },
+  {
+    "id": "art-003",
+    "prompt": "___ Bergwerk",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 2
+  },
+  {
+    "id": "art-004",
+    "prompt": "___ Höhle",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 1
+  },
+  {
+    "id": "art-005",
+    "prompt": "___ Schatz",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "art-006",
+    "prompt": "___ Gold",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 2
+  },
+  {
+    "id": "art-007",
+    "prompt": "___ Stein",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "art-008",
+    "prompt": "___ Kerze",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 1
+  },
+  {
+    "id": "art-009",
+    "prompt": "___ Fenster",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 2
+  },
+  {
+    "id": "art-010",
+    "prompt": "___ Mädchen",
+    "promptLang": "de",
+    "options": ["das", "die"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "art-011",
+    "prompt": "___ Hammer",
+    "promptLang": "de",
+    "options": ["der", "die", "das"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "art-012",
+    "prompt": "___ Messer",
+    "promptLang": "de",
+    "options": ["das", "der"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
 
-  { "id": "tr-001", "prompt": "окно", "promptLang": "ru", "options": ["das Fenster", "die Tür", "der Boden", "die Wand"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-002", "prompt": "золото", "promptLang": "ru", "options": ["das Gold", "das Geld", "der Stein", "das Glas"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-003", "prompt": "пещера", "promptLang": "ru", "options": ["die Höhle", "die Hölle", "die Hütte", "die Halle"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-004", "prompt": "камень", "promptLang": "ru", "options": ["der Stein", "der Stern", "der Stuhl", "der Strand"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-005", "prompt": "свеча", "promptLang": "ru", "options": ["die Kerze", "die Katze", "die Karte", "die Kirche"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-006", "prompt": "сокровище", "promptLang": "ru", "options": ["der Schatz", "der Schutz", "der Satz", "der Schmutz"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-007", "prompt": "верёвка", "promptLang": "ru", "options": ["das Seil", "die Seite", "das Segel", "die Säule"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-008", "prompt": "колесо", "promptLang": "ru", "options": ["das Rad", "der Rat", "das Rohr", "die Rede"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-009", "prompt": "гора", "promptLang": "ru", "options": ["der Berg", "die Burg", "der Weg", "das Werk"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-010", "prompt": "фонарь", "promptLang": "ru", "options": ["die Laterne", "die Leiter", "die Leine", "die Lehne"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-011", "prompt": "шахтёрская лампа", "promptLang": "ru", "options": ["die Grubenlampe", "die Taschenlampe", "die Glühbirne", "der Kronleuchter"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "tr-012", "prompt": "подземная добыча", "promptLang": "ru", "options": ["der Untertagebau", "der Tagebau", "die Bergwerksverwaltung", "der Straßenbau"], "optionsLang": "de", "correctIndex": 0 },
+  {
+    "id": "tr-001",
+    "prompt": "окно",
+    "promptLang": "ru",
+    "options": ["das Fenster", "die Tür", "der Boden", "die Wand"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-002",
+    "prompt": "золото",
+    "promptLang": "ru",
+    "options": ["das Gold", "das Geld", "der Stein", "das Glas"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-003",
+    "prompt": "пещера",
+    "promptLang": "ru",
+    "options": ["die Höhle", "die Hölle", "die Hütte", "die Halle"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-004",
+    "prompt": "камень",
+    "promptLang": "ru",
+    "options": ["der Stein", "der Stern", "der Stuhl", "der Strand"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-005",
+    "prompt": "свеча",
+    "promptLang": "ru",
+    "options": ["die Kerze", "die Katze", "die Karte", "die Kirche"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-006",
+    "prompt": "сокровище",
+    "promptLang": "ru",
+    "options": ["der Schatz", "der Schutz", "der Satz", "der Schmutz"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-007",
+    "prompt": "верёвка",
+    "promptLang": "ru",
+    "options": ["das Seil", "die Seite", "das Segel", "die Säule"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-008",
+    "prompt": "колесо",
+    "promptLang": "ru",
+    "options": ["das Rad", "der Rat", "das Rohr", "die Rede"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-009",
+    "prompt": "гора",
+    "promptLang": "ru",
+    "options": ["der Berg", "die Burg", "der Weg", "das Werk"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-010",
+    "prompt": "фонарь",
+    "promptLang": "ru",
+    "options": ["die Laterne", "die Leiter", "die Leine", "die Lehne"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-011",
+    "prompt": "шахтёрская лампа",
+    "promptLang": "ru",
+    "options": ["die Grubenlampe", "die Taschenlampe", "die Glühbirne", "der Kronleuchter"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "tr-012",
+    "prompt": "подземная добыча",
+    "promptLang": "ru",
+    "options": ["der Untertagebau", "der Tagebau", "die Bergwerksverwaltung", "der Straßenbau"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
 
-  { "id": "verb-001", "prompt": "du ___ (fahren)", "promptLang": "de", "options": ["fährst", "fahrst", "fährt", "fahren"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-002", "prompt": "er ___ (lesen)", "promptLang": "de", "options": ["liest", "lest", "lesen", "lese"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-003", "prompt": "ich ___ (sein)", "promptLang": "de", "options": ["bin", "bist", "ist", "sind"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-004", "prompt": "wir ___ (haben)", "promptLang": "de", "options": ["haben", "habt", "hat", "habe"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-005", "prompt": "Anna ___ (sprechen)", "promptLang": "de", "options": ["spricht", "sprecht", "sprichst", "sprechen"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-006", "prompt": "ihr ___ (kommen)", "promptLang": "de", "options": ["kommt", "kommen", "kommst", "komme"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-007", "prompt": "du ___ (essen)", "promptLang": "de", "options": ["isst", "esst", "essen", "isse"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-008", "prompt": "er ___ (nehmen)", "promptLang": "de", "options": ["nimmt", "nehmt", "nimmst", "nehme"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-009", "prompt": "du ___ (arbeiten)", "promptLang": "de", "options": ["arbeitest", "arbeitst", "arbeitet", "arbeite"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-010", "prompt": "er ___ (laufen)", "promptLang": "de", "options": ["läuft", "lauft", "läufst", "laufen"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-011", "prompt": "du ___ (sehen)", "promptLang": "de", "options": ["siehst", "sehst", "sieht", "sehen"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "verb-012", "prompt": "der Bergmann ___ (graben)", "promptLang": "de", "options": ["gräbt", "grabt", "gräbst", "graben"], "optionsLang": "de", "correctIndex": 0 },
+  {
+    "id": "verb-001",
+    "prompt": "du ___ (fahren)",
+    "promptLang": "de",
+    "options": ["fährst", "fahrst", "fährt", "fahren"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-002",
+    "prompt": "er ___ (lesen)",
+    "promptLang": "de",
+    "options": ["liest", "lest", "lesen", "lese"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-003",
+    "prompt": "ich ___ (sein)",
+    "promptLang": "de",
+    "options": ["bin", "bist", "ist", "sind"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-004",
+    "prompt": "wir ___ (haben)",
+    "promptLang": "de",
+    "options": ["haben", "habt", "hat", "habe"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-005",
+    "prompt": "Anna ___ (sprechen)",
+    "promptLang": "de",
+    "options": ["spricht", "sprecht", "sprichst", "sprechen"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-006",
+    "prompt": "ihr ___ (kommen)",
+    "promptLang": "de",
+    "options": ["kommt", "kommen", "kommst", "komme"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-007",
+    "prompt": "du ___ (essen)",
+    "promptLang": "de",
+    "options": ["isst", "esst", "essen", "isse"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-008",
+    "prompt": "er ___ (nehmen)",
+    "promptLang": "de",
+    "options": ["nimmt", "nehmt", "nimmst", "nehme"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-009",
+    "prompt": "du ___ (arbeiten)",
+    "promptLang": "de",
+    "options": ["arbeitest", "arbeitst", "arbeitet", "arbeite"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-010",
+    "prompt": "er ___ (laufen)",
+    "promptLang": "de",
+    "options": ["läuft", "lauft", "läufst", "laufen"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-011",
+    "prompt": "du ___ (sehen)",
+    "promptLang": "de",
+    "options": ["siehst", "sehst", "sieht", "sehen"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "verb-012",
+    "prompt": "der Bergmann ___ (graben)",
+    "promptLang": "de",
+    "options": ["gräbt", "grabt", "gräbst", "graben"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
 
-  { "id": "prep-001", "prompt": "mit ___ Freund", "promptLang": "de", "options": ["dem", "den", "der", "des"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-002", "prompt": "für ___ Mutter", "promptLang": "de", "options": ["die", "der", "den", "dem"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-003", "prompt": "ohne ___ Hund", "promptLang": "de", "options": ["den", "dem", "der", "des"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-004", "prompt": "aus ___ Haus", "promptLang": "de", "options": ["dem", "das", "den", "der"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-005", "prompt": "bei ___ Oma", "promptLang": "de", "options": ["der", "die", "den", "dem"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-006", "prompt": "durch ___ Tunnel", "promptLang": "de", "options": ["den", "dem", "der", "des"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-007", "prompt": "gegen ___ Wand", "promptLang": "de", "options": ["die", "der", "den", "dem"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-008", "prompt": "von ___ Berg", "promptLang": "de", "options": ["dem", "den", "der", "des"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-009", "prompt": "nach ___ Arbeit", "promptLang": "de", "options": ["der", "die", "den", "dem"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-010", "prompt": "um ___ Tisch", "promptLang": "de", "options": ["den", "dem", "der", "die"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-011", "prompt": "trotz ___ Regens", "promptLang": "de", "options": ["des", "dem", "den", "der"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "prep-012", "prompt": "Wir sind in ___ Höhle.", "promptLang": "de", "options": ["der", "die", "den", "dem"], "optionsLang": "de", "correctIndex": 0 },
+  {
+    "id": "prep-001",
+    "prompt": "mit ___ Freund",
+    "promptLang": "de",
+    "options": ["dem", "den", "der", "des"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-002",
+    "prompt": "für ___ Mutter",
+    "promptLang": "de",
+    "options": ["die", "der", "den", "dem"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-003",
+    "prompt": "ohne ___ Hund",
+    "promptLang": "de",
+    "options": ["den", "dem", "der", "des"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-004",
+    "prompt": "aus ___ Haus",
+    "promptLang": "de",
+    "options": ["dem", "das", "den", "der"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-005",
+    "prompt": "bei ___ Oma",
+    "promptLang": "de",
+    "options": ["der", "die", "den", "dem"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-006",
+    "prompt": "durch ___ Tunnel",
+    "promptLang": "de",
+    "options": ["den", "dem", "der", "des"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-007",
+    "prompt": "gegen ___ Wand",
+    "promptLang": "de",
+    "options": ["die", "der", "den", "dem"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-008",
+    "prompt": "von ___ Berg",
+    "promptLang": "de",
+    "options": ["dem", "den", "der", "des"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-009",
+    "prompt": "nach ___ Arbeit",
+    "promptLang": "de",
+    "options": ["der", "die", "den", "dem"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-010",
+    "prompt": "um ___ Tisch",
+    "promptLang": "de",
+    "options": ["den", "dem", "der", "die"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-011",
+    "prompt": "trotz ___ Regens",
+    "promptLang": "de",
+    "options": ["des", "dem", "den", "der"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "prep-012",
+    "prompt": "Wir sind in ___ Höhle.",
+    "promptLang": "de",
+    "options": ["der", "die", "den", "dem"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
 
-  { "id": "pl-001", "prompt": "das Kind → die ___", "promptLang": "de", "options": ["Kinder", "Kinde", "Kinds", "Kindern"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-002", "prompt": "der Stein → die ___", "promptLang": "de", "options": ["Steine", "Steinen", "Steiner", "Steins"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-003", "prompt": "die Lampe → die ___", "promptLang": "de", "options": ["Lampen", "Lampes", "Lämpe", "Lampe"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-004", "prompt": "das Buch → die ___", "promptLang": "de", "options": ["Bücher", "Buche", "Büchen", "Buchs"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-005", "prompt": "der Hammer → die ___", "promptLang": "de", "options": ["Hämmer", "Hammers", "Hammern", "Hämmers"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-006", "prompt": "die Höhle → die ___", "promptLang": "de", "options": ["Höhlen", "Höhles", "Höhle", "Höhler"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-007", "prompt": "der Apfel → die ___", "promptLang": "de", "options": ["Äpfel", "Apfels", "Äpfeln", "Apfeln"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-008", "prompt": "die Maus → die ___", "promptLang": "de", "options": ["Mäuse", "Mausen", "Mäusen", "Mause"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-009", "prompt": "das Auto → die ___", "promptLang": "de", "options": ["Autos", "Auten", "Autoe", "Äutos"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-010", "prompt": "der Schatz → die ___", "promptLang": "de", "options": ["Schätze", "Schatze", "Schätzen", "Schatzen"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-011", "prompt": "die Stadt → die ___", "promptLang": "de", "options": ["Städte", "Städten", "Stadte", "Stadten"], "optionsLang": "de", "correctIndex": 0 },
-  { "id": "pl-012", "prompt": "der Berg → die ___", "promptLang": "de", "options": ["Berge", "Bergen", "Bergs", "Berger"], "optionsLang": "de", "correctIndex": 0 }
+  {
+    "id": "pl-001",
+    "prompt": "das Kind → die ___",
+    "promptLang": "de",
+    "options": ["Kinder", "Kinde", "Kinds", "Kindern"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-002",
+    "prompt": "der Stein → die ___",
+    "promptLang": "de",
+    "options": ["Steine", "Steinen", "Steiner", "Steins"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-003",
+    "prompt": "die Lampe → die ___",
+    "promptLang": "de",
+    "options": ["Lampen", "Lampes", "Lämpe", "Lampe"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-004",
+    "prompt": "das Buch → die ___",
+    "promptLang": "de",
+    "options": ["Bücher", "Buche", "Büchen", "Buchs"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-005",
+    "prompt": "der Hammer → die ___",
+    "promptLang": "de",
+    "options": ["Hämmer", "Hammers", "Hammern", "Hämmers"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-006",
+    "prompt": "die Höhle → die ___",
+    "promptLang": "de",
+    "options": ["Höhlen", "Höhles", "Höhle", "Höhler"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-007",
+    "prompt": "der Apfel → die ___",
+    "promptLang": "de",
+    "options": ["Äpfel", "Apfels", "Äpfeln", "Apfeln"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-008",
+    "prompt": "die Maus → die ___",
+    "promptLang": "de",
+    "options": ["Mäuse", "Mausen", "Mäusen", "Mause"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-009",
+    "prompt": "das Auto → die ___",
+    "promptLang": "de",
+    "options": ["Autos", "Auten", "Autoe", "Äutos"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-010",
+    "prompt": "der Schatz → die ___",
+    "promptLang": "de",
+    "options": ["Schätze", "Schatze", "Schätzen", "Schatzen"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-011",
+    "prompt": "die Stadt → die ___",
+    "promptLang": "de",
+    "options": ["Städte", "Städten", "Stadte", "Stadten"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  },
+  {
+    "id": "pl-012",
+    "prompt": "der Berg → die ___",
+    "promptLang": "de",
+    "options": ["Berge", "Bergen", "Bergs", "Berger"],
+    "optionsLang": "de",
+    "correctIndex": 0
+  }
 ]

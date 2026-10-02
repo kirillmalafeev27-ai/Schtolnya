@@ -20,7 +20,10 @@ async function readState(page: Page): Promise<GameState | null> {
     const s = w.mine?.app.round?.state as Record<string, unknown> | undefined;
     if (!s) return null;
     const g = s.grid as { w: number; h: number; cells: Uint8Array; cracked: Uint8Array };
-    return JSON.stringify({ ...s, grid: { w: g.w, h: g.h, cells: Array.from(g.cells), cracked: Array.from(g.cracked) } });
+    return JSON.stringify({
+      ...s,
+      grid: { w: g.w, h: g.h, cells: Array.from(g.cells), cracked: Array.from(g.cracked) },
+    });
   });
   if (!raw) return null;
   const s = JSON.parse(raw);
@@ -32,7 +35,9 @@ async function readState(page: Page): Promise<GameState | null> {
 async function cellPoint(page: Page, cell: number): Promise<{ x: number; y: number }> {
   return page.evaluate((c) => {
     const w = window as unknown as {
-      mine: { app: { gameScene: { cellToCss(c: number): { x: number; y: number } }; worldElement: HTMLElement } };
+      mine: {
+        app: { gameScene: { cellToCss(c: number): { x: number; y: number } }; worldElement: HTMLElement };
+      };
     };
     const p = w.mine.app.gameScene.cellToCss(c);
     const host = w.mine.app.worldElement.querySelector('.mine__canvas-host')!.getBoundingClientRect();
@@ -41,8 +46,15 @@ async function cellPoint(page: Page, cell: number): Promise<{ x: number; y: numb
 }
 
 async function main() {
-  const browser = await chromium.launch({ executablePath: CHROME, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, hasTouch: mode === 'touch' });
+  const browser = await chromium.launch({
+    executablePath: CHROME,
+    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+  const ctx = await browser.newContext({
+    viewport: { width, height },
+    deviceScaleFactor: 2,
+    hasTouch: mode === 'touch',
+  });
   const page = await ctx.newPage();
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -50,7 +62,11 @@ async function main() {
     if (m.type() === 'error' || m.type() === 'warning') errors.push(`[${m.type()}] ${m.text()}`);
   });
   await page.goto(`${url}?test&level=${level}&seed=${seed}`);
-  await page.waitForFunction(() => !!(window as unknown as { mine?: { app: { round: unknown } } }).mine?.app.round, null, { timeout: 30000 });
+  await page.waitForFunction(
+    () => !!(window as unknown as { mine?: { app: { round: unknown } } }).mine?.app.round,
+    null,
+    { timeout: 30000 },
+  );
   const mem = newMemory();
   let answers = 0;
   let actions = 0;
@@ -83,7 +99,9 @@ async function main() {
       const quiz = document.querySelector<HTMLElement>('.quiz');
       if (!quiz || quiz.dataset.mode !== 'active' || quiz.classList.contains('quiz--paused')) return false;
       const correct = Number(quiz.dataset.testCorrect ?? -1);
-      const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.quiz__card:not(.quiz__card--out) .quiz__opt'));
+      const buttons = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('.quiz__card:not(.quiz__card--out) .quiz__opt'),
+      );
       if (!buttons.length || buttons.some((b) => b.disabled)) return false;
       const pick = Math.random() < 0.9 ? correct : (correct + 1) % buttons.length;
       buttons[pick]?.click();

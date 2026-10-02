@@ -35,7 +35,7 @@ export class ArtFactory {
   ) {}
 
   /** Сгенерировать все текстуры манифеста. Можно передать бюджет кадра для прогресса. */
-  async generateAll(onProgress?: (done: number, total: number) => void, sliceMs = 24): Promise<GenReport> {
+  async generateAll(onProgress?: (done: number, total: number) => void, sliceMs = 60): Promise<GenReport> {
     const list = manifest();
     const t0 = performance.now();
     let pixels = 0;
@@ -44,7 +44,8 @@ export class ArtFactory {
       pixels += this.generate(list[i]);
       if (performance.now() - sliceStart > sliceMs) {
         onProgress?.(i + 1, list.length);
-        await new Promise((r) => requestAnimationFrame(() => r(null)));
+        // Уступаем поток таймером, а не кадром: кадр рендера может быть дорогим, а экран загрузки — это DOM.
+        await new Promise((r) => setTimeout(r, 0));
         sliceStart = performance.now();
       }
     }
@@ -53,23 +54,44 @@ export class ArtFactory {
   }
 
   generate(entry: ArtEntry): number {
-    const recipe = this.recipes[entry.recipe];
-    const cw = Math.ceil(entry.w * this.cellPx);
-    const ch = Math.ceil(entry.h * this.cellPx);
-    const canvas = makeCanvas(cw, ch);
-    const ctx = canvas.getContext('2d')!;
-    const seed = hashString(entry.key) ^ (entry.variant * 0x9e3779b1);
-    if (recipe) recipe(ctx, cw, ch, this.cellPx, entry.variant, mulberry32(seed));
-    if (this.textures.exists(entry.key)) this.textures.remove(entry.key);
-    this.textures.addCanvas(entry.key, canvas);
-    return cw * ch;
+    const canvas = renderEntry(entry, this.cellPx, this.recipes);
+    putCanvas(this.textures, entry.key, canvas);
+    return canvas.width * canvas.height;
   }
 
   /** Добавить (или заменить) текстуру из готовой канвы. */
   put(key: string, canvas: HTMLCanvasElement): void {
-    if (this.textures.exists(key)) this.textures.remove(key);
-    this.textures.addCanvas(key, canvas);
+    putCanvas(this.textures, key, canvas);
   }
+}
+
+/**
+ * Зарегистрировать канву как обычную текстуру. В отличие от addCanvas (CanvasTexture),
+ * не читает пиксели обратно с видеокарты — регистрация почти бесплатна.
+ */
+export function putCanvas(
+  textures: Phaser.Textures.TextureManager,
+  key: string,
+  canvas: HTMLCanvasElement,
+): void {
+  if (textures.exists(key)) textures.remove(key);
+  textures.addImage(key, canvas as unknown as HTMLImageElement);
+}
+
+/** Нарисовать одну текстуру манифеста в отдельную канву. */
+export function renderEntry(
+  entry: ArtEntry,
+  cellPx: number,
+  recipes: Record<string, Recipe>,
+): HTMLCanvasElement {
+  const recipe = recipes[entry.recipe];
+  const cw = Math.ceil(entry.w * cellPx);
+  const ch = Math.ceil(entry.h * cellPx);
+  const canvas = makeCanvas(cw, ch);
+  const ctx = canvas.getContext('2d')!;
+  const seed = hashString(entry.key) ^ (entry.variant * 0x9e3779b1);
+  if (recipe) recipe(ctx, cw, ch, cellPx, entry.variant, mulberry32(seed));
+  return canvas;
 }
 
 export function hashString(s: string): number {

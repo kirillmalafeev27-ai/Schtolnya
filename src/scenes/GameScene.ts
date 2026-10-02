@@ -17,6 +17,7 @@ import { HeroView } from '../render/HeroView';
 import { hintFlags, HintsView, type HintsInfo } from '../render/HintsView';
 import { Juice, type SfxStyleName } from '../render/juice';
 import { KoboldView } from '../render/KoboldView';
+import { LightRig } from '../render/lights';
 import { createLayers, worldLayersOf, type WorldLayers } from '../render/layers';
 import { WorldView } from '../render/WorldView';
 
@@ -29,6 +30,9 @@ export interface SceneOptions {
   words: Record<SfxKey, string>;
   latinWords: boolean;
   texCellPx: number;
+  /** Комиксный свет фильтром (иначе — запасной путь). */
+  lighting: boolean;
+  dpr: number;
   /** Сообщения для DOM-плашек над миром. */
   onPlate: (kind: 'noShelter' | 'pathClosed' | 'veinFirst', cell: number, visible: boolean) => void;
   /** Подобранный предмет долетел до мира-края — пусть DOM подхватит. */
@@ -48,6 +52,8 @@ interface RoundViews {
   juice: Juice;
   shownItems: Set<number>;
   zzz: Phaser.GameObjects.Image[];
+  lights: LightRig;
+  spark: { x: number; y: number } | null;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -111,15 +117,43 @@ export class GameScene extends Phaser.Scene {
     const juice = new Juice(this, layers, ts, this.cameras.main, [this.cameras.main, this.uiCam]);
     juice.reduced = opts.reduced;
     juice.sfxLatin = opts.latinWords;
+    juice.avoid = () => {
+      const v = this.views;
+      if (!v) return [];
+      const boxes = [
+        { x: v.hero.x - CELL * 0.38, y: v.hero.y - CELL * 1.18, w: CELL * 0.76, h: CELL * 1.22 },
+      ];
+      for (const k of v.kobolds)
+        boxes.push({ x: k.x - CELL * 0.42, y: k.y - CELL * 1.1, w: CELL * 0.84, h: CELL * 1.14 });
+      return boxes;
+    };
     const blast = new BlastView(this, layers, juice, ts);
-    this.views = { ctrl, layers, world, hero, kobolds, hints, blast, juice, shownItems: new Set(s.items.map((i) => i.id)), zzz: [] };
+    const lights = new LightRig(this, layers, s, opts.lighting, `r${this.uid}`, opts.dpr);
+    lights.reduced = opts.reduced;
+    this.views = {
+      ctrl,
+      layers,
+      world,
+      hero,
+      kobolds,
+      hints,
+      blast,
+      juice,
+      shownItems: new Set(s.items.map((i) => i.id)),
+      zzz: [],
+      lights,
+      spark: null,
+    };
     // Камеры: основная видит слои 0–4 (к ним применяется свет), вторая — только слой 5.
     this.cameras.main.ignore(layers.ui);
     this.uiCam.ignore(worldLayersOf(layers));
     hero.syncBelt(s.hero.sticks, s.hero.hasVein);
     // Пузыри сна над спящими кобольдами.
     for (const k of kobolds) {
-      const z = this.add.image(k.x + CELL * 0.3, k.y - CELL * 0.85, ART.zzz).setScale(ts).setAlpha(0.9);
+      const z = this.add
+        .image(k.x + CELL * 0.3, k.y - CELL * 0.85, ART.zzz)
+        .setScale(ts)
+        .setAlpha(0.9);
       layers.ui.add(z);
       this.views.zzz.push(z);
     }
@@ -132,6 +166,7 @@ export class GameScene extends Phaser.Scene {
   clearRound(): void {
     if (!this.views) return;
     const v = this.views;
+    v.lights.destroy();
     v.world.destroy();
     for (const l of Object.values(v.layers)) l.destroy(true);
     this.tweens.killAll();
@@ -148,7 +183,10 @@ export class GameScene extends Phaser.Scene {
 
   setReduced(reduced: boolean): void {
     if (this.opts) this.opts.reduced = reduced;
-    if (this.views) this.views.juice.reduced = reduced;
+    if (this.views) {
+      this.views.juice.reduced = reduced;
+      this.views.lights.reduced = reduced;
+    }
   }
 
   setHintLevel(h: HintLevel): void {
@@ -225,7 +263,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private applyScroll(dx: number, dy: number): void {
-    for (const cam of [this.cameras.main, this.uiCam]) cam.setScroll(this.baseScroll.x + dx, this.baseScroll.y + dy);
+    for (const cam of [this.cameras.main, this.uiCam])
+      cam.setScroll(this.baseScroll.x + dx, this.baseScroll.y + dy);
   }
 
   /** Тряска одинаково сдвигает обе камеры, чтобы подсказки не разъезжались с миром. */
@@ -299,7 +338,14 @@ export class GameScene extends Phaser.Scene {
 
   // ───────────── события правил ─────────────
 
-  private say(key: SfxKey, x: number, y: number, style: SfxStyleName, important = false, hold?: number): void {
+  private say(
+    key: SfxKey,
+    x: number,
+    y: number,
+    style: SfxStyleName,
+    important = false,
+    hold?: number,
+  ): void {
     const v = this.views;
     if (!v) return;
     v.juice.word(this.opts.words[key], x, y, style, { important, hold });
@@ -338,6 +384,8 @@ export class GameScene extends Phaser.Scene {
         }
         case 'BLAST': {
           v.world.clearFuse();
+          v.spark = null;
+          v.lights.onBlast(cellX(g, e.origin), cellY(g, e.origin));
           v.blast.play(g, e.origin, e.rays, reduced);
           this.shake(CAM.shakeBlastPx);
           v.juice.flash(A.whiteFlashMs);
@@ -349,6 +397,7 @@ export class GameScene extends Phaser.Scene {
         case 'ROCK_DESTROYED':
           v.world.refreshCell(e.cell);
           v.world.addScorch(e.cell);
+          v.lights.refreshMask(s);
           break;
         case 'ROCK_CRACKED':
           v.world.refreshCell(e.cell);
@@ -373,6 +422,7 @@ export class GameScene extends Phaser.Scene {
           break;
         }
         case 'KOBOLD_WAKE': {
+          v.lights.onKoboldWake();
           const k = s.kobolds[e.id];
           v.kobolds[e.id].setMode(k.mode, k.anger, reduced);
           v.zzz[e.id]?.setVisible(false);
@@ -427,12 +477,21 @@ export class GameScene extends Phaser.Scene {
         }
         case 'HERO_BLASTED':
           v.hero.setMood('blasted', reduced);
-          this.time.delayedCall(420, () => this.say('autsch', v.hero.x, v.hero.y - CELL * 0.6, 'danger', true, 1400));
+          this.time.delayedCall(420, () =>
+            this.say('autsch', v.hero.x, v.hero.y - CELL * 0.6, 'danger', true, 1400),
+          );
           refresh = true;
           break;
         case 'ESCAPED': {
           v.hero.setMood('victory', reduced);
-          this.say(e.close ? 'knapp' : 'geschafft', cellX(g, s.lift), cellY(g, s.lift) + CELL * 0.4, 'win', true, 1600);
+          this.say(
+            e.close ? 'knapp' : 'geschafft',
+            cellX(g, s.lift),
+            cellY(g, s.lift) + CELL * 0.4,
+            'win',
+            true,
+            1600,
+          );
           v.juice.flash(A.whiteFlashMs, 0.6);
           this.rideLiftUp();
           refresh = true;
@@ -472,7 +531,15 @@ export class GameScene extends Phaser.Scene {
       case 'bedrock': {
         // Скала покачивается, звучит «KLOPF» (2.2.9).
         const b = v.world.blockAt(cell);
-        if (b && !reduced) this.tweens.add({ targets: b, angle: { from: -4, to: 4 }, duration: 60, yoyo: true, repeat: 2, onComplete: () => b.setAngle(0) });
+        if (b && !reduced)
+          this.tweens.add({
+            targets: b,
+            angle: { from: -4, to: 4 },
+            duration: 60,
+            yoyo: true,
+            repeat: 2,
+            onComplete: () => b.setAngle(0),
+          });
         this.say('klopf', cellX(g, cell), cellY(g, cell), 'plain');
         break;
       }
@@ -489,7 +556,14 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'liftLocked': {
         const lift = v.world.liftImage;
-        if (!reduced) this.tweens.add({ targets: lift, y: { from: lift.y, to: lift.y - CELL * 0.08 }, duration: 70, yoyo: true, repeat: 1 });
+        if (!reduced)
+          this.tweens.add({
+            targets: lift,
+            y: { from: lift.y, to: lift.y - CELL * 0.08 },
+            duration: 70,
+            yoyo: true,
+            repeat: 1,
+          });
         this.opts.onPlate('veinFirst', s.lift, true);
         break;
       }
@@ -519,7 +593,12 @@ export class GameScene extends Phaser.Scene {
     const dur = Math.min(A.finalAnimMaxMs, 1400);
     v.hero.rideUp(CELL * 2.2, dur);
     if (!v.juice.reduced) {
-      this.tweens.add({ targets: [v.world.liftImage, v.world.liftFront], y: `-=${CELL * 2.2}`, duration: dur, ease: 'Quad.easeIn' });
+      this.tweens.add({
+        targets: [v.world.liftImage, v.world.liftFront],
+        y: `-=${CELL * 2.2}`,
+        duration: dur,
+        ease: 'Quad.easeIn',
+      });
     }
   }
 
@@ -564,15 +643,17 @@ export class GameScene extends Phaser.Scene {
       v.hints.update(delta, reduced);
     }
     // Фитиль: искра бежит, оставшаяся длина — оставшееся время.
+    v.spark = null;
     if (st.fuse) {
       const frac = st.fuse.remaining / st.fuse.total;
-      v.world.drawFuse(frac, time);
+      v.spark = v.world.drawFuse(frac, time);
       v.hints.setFuse(frac);
       if (!this.knisterShown && st.fuse.total - st.fuse.remaining > 0.9) {
         this.knisterShown = true;
         this.say('knister', cellX(st.grid, st.fuse.cell), cellY(st.grid, st.fuse.cell) + CELL * 0.2, 'plain');
       }
     }
+    v.lights.update({ state: st, hero: v.hero, kobolds: v.kobolds, world: v.world, spark: v.spark });
     // Пузыри сна.
     v.zzz.forEach((z, k) => {
       if (!z.visible) return;

@@ -17,6 +17,11 @@ export const palette = {
   crystalDecor: '#7fb8ff', // голубые друзы — только декор
   mushroom: '#5ff2d2', // светящиеся грибы у логова
   scorch: '#2a2230', // копоть после взрыва
+  straw: { base: '#9c8a62', shadow: '#6a5b3e', light: '#c2b285' }, // солома гнезда — приглушённая, не золото
+  rope: '#b8a58a',
+  metal: { base: '#5d6576', shadow: '#3a3f4c', light: '#8c95a8' },
+  wax: '#efe6cf',
+  flame: { core: '#fffbe8', inner: '#ffe58a', outer: '#ffb85c' }, // язычки свечи и фонаря — тёплые, не красные
 
   // разрушимая порода — теплее и бугристее скалы
   rock: { base: '#8a7a68', shadow: '#5f5244', light: '#b3a28c' },
