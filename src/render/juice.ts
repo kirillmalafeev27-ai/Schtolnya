@@ -272,13 +272,21 @@ export class Juice {
     }
     img.setScale(0);
     this.scene.tweens.add({ targets: img, scale: this.ts, duration: 160, ease: 'Back.easeOut' });
+    // Уход без полупрозрачности: тушь и заливка поверх ступенчатого света не должны «просвечивать».
     this.scene.tweens.add({
       targets: img,
-      y: img.y - CELL * 0.35,
-      alpha: 0,
-      delay: hold * 0.6,
-      duration: hold * 0.4,
-      ease: 'Quad.easeIn',
+      y: img.y - CELL * 0.22,
+      delay: 160,
+      duration: hold - 160,
+      ease: 'Sine.easeOut',
+    });
+    this.scene.tweens.add({
+      targets: img,
+      scale: 0,
+      angle: img.angle + (Math.random() < 0.5 ? -14 : 14),
+      delay: hold,
+      duration: 150,
+      ease: 'Back.easeIn',
       onComplete: () => img.destroy(),
     });
     return img;
