@@ -69,11 +69,10 @@ export function fromAscii(
     s2: 16,
     s3: 20,
   };
-  const s = createState(
-    { ...level, startSticks: opts.sticks ?? level.startSticks },
-    gen,
-    { tMed: opts.tMed ?? 5, p: 0.8 },
-  );
+  const s = createState({ ...level, startSticks: opts.sticks ?? level.startSticks }, gen, {
+    tMed: opts.tMed ?? 5,
+    p: 0.8,
+  });
   if (opts.awake) for (const k of s.kobolds) k.mode = 'awake';
   return s;
 }

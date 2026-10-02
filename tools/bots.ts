@@ -3,8 +3,8 @@
 import { blastCross } from '../src/core/blast';
 import { Cell, Grid, isDestructible, manhattan, neighbor } from '../src/core/grid';
 import { burningCross, heroPassable, heroRoute, shelterMarks } from '../src/core/intent';
-import { koboldPathDistance } from '../src/core/kobold';
-import { bfsDist } from '../src/core/pathfinding';
+import { koboldField, koboldPathDistance } from '../src/core/kobold';
+import { bfsDist, nextStep } from '../src/core/pathfinding';
 import { remainingCost, routeCost, veinTargets } from '../src/core/routes';
 import type { IntentAction } from '../src/core/rules';
 import type { GameState } from '../src/core/state';
@@ -16,9 +16,17 @@ export interface BotDecision {
   cell?: number;
 }
 
+export interface LurePlan {
+  rock: number;
+  stand: number;
+  shelter: number;
+}
+
 export interface BotMemory {
   /** Ключ последнего отклонённого решения — не повторять его, пока ничего не изменилось. */
   denied: string;
+  /** Задуманная приманка: куда встать, что заложить, куда уйти. */
+  lure: LurePlan | null;
   luring: boolean;
   lureStand: number;
   lureAttempts: number;
@@ -27,7 +35,15 @@ export interface BotMemory {
 }
 
 export function newMemory(): BotMemory {
-  return { denied: '', luring: false, lureStand: -1, lureAttempts: 0, lureSuccess: 0, lastStunCount: 0 };
+  return {
+    denied: '',
+    lure: null,
+    luring: false,
+    lureStand: -1,
+    lureAttempts: 0,
+    lureSuccess: 0,
+    lastStunCount: 0,
+  };
 }
 
 /** Маршрут от героя к клетке у жилы: лексикографически (взрывы, шаги) или (шаги) при бюджете взрывов. */
@@ -190,15 +206,25 @@ export function decide(bot: BotKind, s: GameState, mem: BotMemory): BotDecision 
   // Горит фитиль: в укрытие (или приманка у заманивающего).
   if (s.fuse) {
     const cross = burningCross(s)!;
-    if (bot === 'lure' && mem.luring) {
+    if (bot === 'lure' && mem.luring && mem.lure) {
+      // Держим готовое действие и уходим в последний момент: перед взрывом или перед шагом кобольда на героя.
+      const plan = mem.lure;
       const ks = awakeKobolds(s);
-      const onCross = ks.some((k) => cross.has(k.cell));
-      const late = s.fuse.remaining < 0.6 * s.params.tMed;
-      const danger = ks.some((k) => koboldPathDistance(s, k) <= 1);
-      if (onCross || late || danger) {
+      const late = s.fuse.remaining < 0.35;
+      const danger = ks.some((k) => manhattan(s.grid, k.cell, h.cell) <= 1 && k.stepTimer < 0.4);
+      const off = !cross.has(h.cell);
+      if (off) return h.intent.kind === 'stay' ? null : { kind: 'stay' };
+      if (late || danger) {
         mem.luring = false;
-        return shelterMove(s, cross);
+        return { kind: 'move', cell: plan.shelter };
       }
+      // Без готового действия при кобольде рядом — ответ сразу уводит в укрытие.
+      if (
+        !h.ready &&
+        ks.some((k) => manhattan(s.grid, k.cell, h.cell) <= 2) &&
+        s.fuse.remaining < 2 * s.params.tMed
+      )
+        return want(s, { kind: 'move', cell: plan.shelter });
       return h.intent.kind === 'stay' ? null : { kind: 'stay' };
     }
     if (cross.has(h.cell)) {
@@ -217,16 +243,156 @@ export function decide(bot: BotKind, s: GameState, mem: BotMemory): BotDecision 
   // Кобольд вплотную — сначала уйти.
   const kd = koboldDistField(s);
   const f = flee(s, kd);
-  if (f) return want(s, f);
+  if (f) {
+    mem.lure = null;
+    return want(s, f);
+  }
+  // Заманивающий: просчитанная приманка, если кобольд идёт к герою.
+  if (bot === 'lure') {
+    const d = lureStep(s, mem);
+    if (d !== undefined) return d;
+  }
   const plan = planRoute(bot, s, mem);
   if (!plan) return null;
-  if (nextStepUnsafe(s, plan, kd)) return s.hero.intent.kind === 'stay' ? null : { kind: 'stay' };
   const key = `${plan.kind}:${plan.cell ?? ''}`;
-  if (key === mem.denied) return s.hero.intent.kind === 'stay' ? null : { kind: 'stay' };
+  const blocked = key === mem.denied;
+  if (kd && plan.kind !== 'stay' && (blocked || nextStepUnsafe(s, plan, kd) || raceLost(s, plan, kd))) {
+    // Кобольд успевает перехватить: обходной путь, где герой везде раньше него, иначе — уйти подальше.
+    const detour = safeDetour(s, plan, kd);
+    if (detour !== undefined) return detour;
+    const k = kite(s, kd);
+    if (k) return want(s, k);
+    return s.hero.intent.kind === 'stay' ? null : { kind: 'stay' };
+  }
+  if (blocked) return s.hero.intent.kind === 'stay' ? null : { kind: 'stay' };
   return plan;
 }
 
-function planRoute(bot: BotKind, s: GameState, mem: BotMemory): BotDecision | null {
+/** Интервал шага ближайшего бодрствующего кобольда. */
+function koboldInterval(s: GameState): number {
+  const ks = awakeKobolds(s);
+  return ks.length ? Math.min(...ks.map((k) => k.stepInterval)) : Infinity;
+}
+
+/** Клетки, куда ведёт решение (для обхода). */
+function planTargets(s: GameState, plan: BotDecision): number[] {
+  const g = s.grid;
+  if (plan.kind === 'home') return [s.lift];
+  if (plan.kind === 'move') return [plan.cell!];
+  if (plan.kind === 'plant') {
+    const out: number[] = [];
+    for (let d = 0; d < 4; d++) {
+      const nb = neighbor(g, plan.cell!, d);
+      if (nb >= 0 && (g.cells[nb] === Cell.FLOOR || g.cells[nb] === Cell.LIFT)) out.push(nb);
+    }
+    return out;
+  }
+  return [];
+}
+
+/** Проигрывает ли герой гонку кобольду на маршруте решения. */
+function raceLost(s: GameState, plan: BotDecision, kd: Int32Array): boolean {
+  const intent =
+    plan.kind === 'move'
+      ? { kind: 'move' as const, target: plan.cell! }
+      : plan.kind === 'plant'
+        ? { kind: 'plant' as const, target: plan.cell! }
+        : { kind: 'home' as const };
+  const route = heroRoute(s, intent);
+  if (!route) return false;
+  const E = actionTime(s);
+  const I = koboldInterval(s);
+  for (let i = 0; i < route.length; i++) {
+    const c = route[i];
+    if (kd[c] < 0) continue;
+    if ((i + 1) * E >= kd[c] * I - 0.3 * I) return true;
+  }
+  return false;
+}
+
+/** Обход: BFS по шагам героя, где каждую клетку герой проходит заметно раньше кобольда. */
+function safeDetour(s: GameState, plan: BotDecision, kd: Int32Array): BotDecision | null | undefined {
+  const g = s.grid;
+  const targets = new Set(planTargets(s, plan));
+  if (!targets.size) return undefined;
+  const pass = heroPassable(s);
+  const E = actionTime(s);
+  const I = koboldInterval(s);
+  const n = g.cells.length;
+  const step = new Int32Array(n).fill(-1);
+  const prev = new Int32Array(n).fill(-1);
+  const q = [s.hero.cell];
+  step[s.hero.cell] = 0;
+  let goal = targets.has(s.hero.cell) ? s.hero.cell : -1;
+  while (q.length && goal < 0) {
+    const c = q.shift()!;
+    for (let d = 0; d < 4; d++) {
+      const nb = neighbor(g, c, d);
+      if (nb < 0 || step[nb] >= 0) continue;
+      const isTarget = targets.has(nb);
+      if (!isTarget && !pass(nb)) continue;
+      if (isTarget && nb === s.lift && !s.hero.hasVein) continue;
+      const t = (step[c] + 1) * E;
+      if (kd[nb] >= 0 && t >= kd[nb] * I - 0.5 * I) continue;
+      step[nb] = step[c] + 1;
+      prev[nb] = c;
+      if (isTarget) {
+        goal = nb;
+        break;
+      }
+      q.push(nb);
+    }
+  }
+  if (goal < 0) return undefined;
+  if (goal === s.hero.cell) return plan.kind === 'plant' ? want(s, plan) : null;
+  let c = goal;
+  while (prev[c] !== s.hero.cell && prev[c] >= 0) c = prev[c];
+  if (c === s.lift) return want(s, { kind: 'home' });
+  // Последний шаг к цели — само решение (закладка с места), иначе — по клетке.
+  if (plan.kind === 'plant' && targets.has(c) && c === goal && step[goal] === 1)
+    return want(s, { kind: 'move', cell: c });
+  return want(s, { kind: 'move', cell: c });
+}
+
+/** Уйти подальше от кобольда: соседняя клетка с наибольшим расстоянием, не в тупик. */
+function kite(s: GameState, kd: Int32Array): BotDecision | null {
+  const g = s.grid;
+  const h = s.hero;
+  const here = kd[h.cell];
+  if (here < 0 || here > 5) return null;
+  const pass = heroPassable(s);
+  let best = -1;
+  let bestScore = -Infinity;
+  for (let d = 0; d < 4; d++) {
+    const nb = neighbor(g, h.cell, d);
+    if (nb < 0 || !pass(nb) || g.cells[nb] !== Cell.FLOOR) continue;
+    if (kd[nb] >= 0 && kd[nb] <= here - 1) continue;
+    // Простор: сколько клеток за ней дальше от кобольда (не загнать себя в тупик).
+    let room = 0;
+    const seen = new Set([h.cell, nb]);
+    const q = [nb];
+    while (q.length && room < 12) {
+      const c = q.shift()!;
+      for (let e = 0; e < 4; e++) {
+        const m = neighbor(g, c, e);
+        if (m < 0 || seen.has(m) || !pass(m) || g.cells[m] !== Cell.FLOOR) continue;
+        if (kd[m] >= 0 && kd[m] < kd[c]) continue;
+        seen.add(m);
+        room++;
+        q.push(m);
+      }
+    }
+    const score = (kd[nb] < 0 ? 99 : kd[nb]) * 10 + room;
+    if (score > bestScore) {
+      bestScore = score;
+      best = nb;
+    }
+  }
+  if (best < 0) return null;
+  return { kind: 'move', cell: best };
+}
+
+function planRoute(bot: BotKind, s: GameState, _mem: BotMemory): BotDecision | null {
   const h = s.hero;
   const g = s.grid;
 
@@ -235,22 +401,7 @@ function planRoute(bot: BotKind, s: GameState, mem: BotMemory): BotDecision | nu
   const veinItem = s.items.find((it) => it.kind === 'vein');
   if (veinItem) return want(s, { kind: 'move', cell: veinItem.cell });
 
-  // Заманивающий: кобольд в пределах 4 клеток и шашка есть — приманка у соседней породы с укрытием в шаг.
-  if (bot === 'lure' && h.sticks > 1) {
-    const near = awakeKobolds(s).filter((k) => koboldPathDistance(s, k) <= 4);
-    if (near.length) {
-      for (let d = 0; d < 4; d++) {
-        const rock = neighbor(g, h.cell, d);
-        if (rock < 0 || !isDestructible(g.cells[rock]) || rock === s.vein) continue;
-        if (shelterStepsFrom(s, h.cell, rock) !== 1) continue;
-        mem.luring = true;
-        mem.lureAttempts++;
-        mem.lastStunCount = s.stats.stuns;
-        return { kind: 'plant', cell: rock };
-      }
-    }
-  }
-
+  void g;
   const budget = Math.max(0, h.sticks - 1);
   const path = routeToVein(s, bot === 'bold' ? 'minSteps' : 'minBlasts', budget);
   if (!path) {
@@ -287,8 +438,8 @@ function followPath(bot: BotKind, s: GameState, path: number[]): BotDecision | n
         best = nb;
       }
     }
-    if (best >= 0 && bestKey >= 200) {
-      // Укрытие только в два шага: поискать другую породу на маршруте в пределах шашек.
+    if (best >= 0 && bestKey >= 300) {
+      // Укрытия ближе трёх шагов нет: поискать другую породу на маршруте в пределах шашек.
       const alt = alternativeObstacle(s, obstacle);
       if (alt) return want(s, alt);
     }
@@ -343,4 +494,119 @@ function want(s: GameState, d: BotDecision): BotDecision | null {
   if (d.kind === 'plant' && it.kind === 'plant' && it.target === d.cell) return null;
   if (d.kind === 'move' && it.kind === 'move' && it.target === d.cell) return null;
   return d;
+}
+
+// ───────────── просчитанная приманка (14.3) ─────────────
+
+/** Ожидаемое время одного действия: ответ по логнормальному закону и доля верных. */
+function actionTime(s: GameState): number {
+  return (s.params.tMed * Math.exp(0.125)) / Math.max(0.3, s.params.p);
+}
+
+/**
+ * Где окажутся кобольды к моменту взрыва `tb`, если герой стоит в `stand` и уходит в `shelter`
+ * в последний момент (перед взрывом или перед шагом кобольда на него). null — героя поймают.
+ */
+function simulateLure(s: GameState, plan: LurePlan, cross: Set<number>, tb: number): boolean {
+  const g = s.grid;
+  const fieldStand = koboldField(g, plan.stand);
+  const fieldShelter = koboldField(g, plan.shelter);
+  // Клетка с шашкой до взрыва — порода, кобольд через неё не пройдёт: поле уже это учитывает.
+  let anyHit = false;
+  let heroLeaveAt = tb - 0.3;
+  const ks = awakeKobolds(s);
+  // Сначала найдём, когда кому-то из кобольдов пора шагнуть на героя — тогда уходим раньше.
+  for (const k of ks) {
+    let c = k.cell;
+    let t = k.stepTimer;
+    while (t < heroLeaveAt) {
+      const nx = nextStep(g, c, fieldStand);
+      if (nx < 0) break;
+      if (nx === plan.stand) {
+        heroLeaveAt = Math.min(heroLeaveAt, t - 0.2);
+        break;
+      }
+      c = nx;
+      t += k.stepInterval;
+    }
+  }
+  if (heroLeaveAt < 0) return false;
+  for (const k of ks) {
+    let c = k.cell;
+    let t = k.stepTimer;
+    while (t < tb) {
+      const field = t < heroLeaveAt ? fieldStand : fieldShelter;
+      const target = t < heroLeaveAt ? plan.stand : plan.shelter;
+      const nx = nextStep(g, c, field);
+      if (nx < 0) break;
+      if (nx === target) return false;
+      c = nx;
+      t += k.stepInterval;
+    }
+    if (cross.has(c)) anyHit = true;
+    if (c === plan.shelter || manhattan(g, c, plan.shelter) === 0) return false;
+  }
+  return anyHit;
+}
+
+/** Найти приманку: порода рядом с героем (или в шаге от него), укрытие в шаг, кобольд попадёт под крест. */
+function planLure(s: GameState): LurePlan | null {
+  const g = s.grid;
+  const h = s.hero;
+  const ks = awakeKobolds(s);
+  if (!ks.length) return null;
+  const near = ks.some((k) => koboldPathDistance(s, k) <= 7);
+  if (!near) return null;
+  const need = h.hasVein ? 1 : 2;
+  if (h.sticks < need) return null;
+  const pass = heroPassable(s);
+  const stands = [h.cell];
+  for (let d = 0; d < 4; d++) {
+    const nb = neighbor(g, h.cell, d);
+    if (nb >= 0 && g.cells[nb] === Cell.FLOOR && pass(nb)) stands.push(nb);
+  }
+  const at = actionTime(s);
+  const fuse = s.params.fuseS;
+  let best: { plan: LurePlan; key: number } | null = null;
+  for (const stand of stands) {
+    const steps = stand === h.cell ? 0 : 1;
+    for (let d = 0; d < 4; d++) {
+      const rock = neighbor(g, stand, d);
+      if (rock < 0 || rock === s.vein || !isDestructible(g.cells[rock])) continue;
+      const cross = new Set(blastCross(g, rock, s.params.blastRange).cells);
+      for (let e = 0; e < 4; e++) {
+        const shelter = neighbor(g, stand, e);
+        if (shelter < 0 || shelter === rock || g.cells[shelter] !== Cell.FLOOR || cross.has(shelter))
+          continue;
+        if (!pass(shelter)) continue;
+        const plan = { rock, stand, shelter };
+        // Время закладки случайно: проверяем раннюю, ожидаемую и позднюю.
+        const ok = [0.55, 1, 1.6].every((k) => simulateLure(s, plan, cross, (steps + 1) * at * k + fuse));
+        if (!ok) continue;
+        const key = steps * 10 + (g.cells[rock] === Cell.HARD ? 1 : 0);
+        if (!best || key < best.key) best = { plan, key };
+      }
+    }
+  }
+  return best?.plan ?? null;
+}
+
+/** Шаг приманки: подойти, заложить; undefined — приманки нет, играем дальше по маршруту. */
+function lureStep(s: GameState, mem: BotMemory): BotDecision | null | undefined {
+  const h = s.hero;
+  if (!mem.lure) {
+    const plan = planLure(s);
+    if (!plan) return undefined;
+    mem.lure = plan;
+    mem.lureAttempts++;
+    mem.lastStunCount = s.stats.stuns;
+  }
+  const plan = mem.lure;
+  if (s.grid.cells[plan.rock] === Cell.FLOOR || h.sticks < 1) {
+    mem.lure = null;
+    return undefined;
+  }
+  if (h.cell !== plan.stand) return want(s, { kind: 'move', cell: plan.stand });
+  mem.luring = true;
+  return want(s, { kind: 'plant', cell: plan.rock });
 }

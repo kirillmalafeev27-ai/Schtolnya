@@ -16,7 +16,7 @@ import { BlastView } from '../render/BlastView';
 import { CELL, cellX, cellY, footY } from '../render/coords';
 import { HeroView } from '../render/HeroView';
 import { hintFlags, HintsView, type HintsInfo } from '../render/HintsView';
-import { Juice, type SfxStyleName } from '../render/juice';
+import { Juice, sfxWordTexture, type SfxStyleName } from '../render/juice';
 import { KoboldView } from '../render/KoboldView';
 import { LightRig } from '../render/lights';
 import { createLayers, worldLayersOf, type WorldLayers } from '../render/layers';
@@ -24,6 +24,35 @@ import { WorldView } from '../render/WorldView';
 
 const A = balance.anim;
 const CAM = balance.camera;
+
+/** Каким стилем звучит каждое слово — для заготовки текстур в начале раунда. */
+const SAY_STYLE: Record<SfxKey, SfxStyleName> = {
+  gluckAuf: 'win',
+  zisch: 'danger',
+  knister: 'plain',
+  drei: 'count',
+  zwei: 'count',
+  eins: 'count',
+  kawumm: 'boom',
+  knacks: 'plain',
+  funkel: 'gold',
+  schnapp: 'plain',
+  kling: 'gold',
+  schnarch: 'plain',
+  ha: 'kobold',
+  grrr: 'kobold',
+  grrr2: 'kobold',
+  trapp: 'kobold',
+  aua: 'kobold',
+  habDich: 'kobold',
+  autsch: 'danger',
+  hoppla: 'danger',
+  klopf: 'plain',
+  leer: 'danger',
+  warte: 'danger',
+  geschafft: 'win',
+  knapp: 'win',
+};
 
 export interface SceneOptions {
   reduced: boolean;
@@ -183,6 +212,10 @@ export class GameScene extends Phaser.Scene {
       this.views.zzz.push(z);
     }
     ctrl.subscribe((events, state) => this.onEvents(ctrl, events, state));
+    // Текстуры слов-звуков — заранее, чтобы первый взрыв не ждал рисования надписи.
+    if (!attract)
+      for (const k of Object.keys(SAY_STYLE) as SfxKey[])
+        sfxWordTexture(this, opts.words[k], SAY_STYLE[k], opts.latinWords);
     this.knisterShown = false;
     this.fit();
     this.refreshHints();

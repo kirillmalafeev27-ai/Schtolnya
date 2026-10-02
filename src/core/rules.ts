@@ -211,6 +211,17 @@ function performAction(s: GameState, ev: GameEvent[]): void {
   }
   moveHero(s, ev, next, intent.kind === 'shelter');
   if (s.status !== 'playing') return;
+  // Бегом в укрытие (DECISIONS.md): один верный ответ уводит с креста целиком, а не на одну клетку.
+  if (intent.kind === 'shelter') {
+    for (let guard = 0; guard < 8; guard++) {
+      const cross = burningCross(s);
+      if (!cross || !cross.has(h.cell)) break;
+      const more = heroRoute(s, h.intent);
+      if (!more || !more.length || more[0] === s.lift) break;
+      moveHero(s, ev, more[0], true);
+      if (s.status !== 'playing') return;
+    }
+  }
 
   if (intent.kind === 'move' && h.cell === intent.target) {
     setIntent(s, ev, { kind: 'stay' }, true);

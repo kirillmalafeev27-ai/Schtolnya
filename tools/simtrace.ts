@@ -1,10 +1,12 @@
 // Трассировка одного раунда бота (тот же движок, что и в симуляции): печатает события и карту.
+import { balance } from '../src/config/balance';
 import { getLevel } from '../src/config/levels';
 import { Cell } from '../src/core/grid';
 import type { GameState } from '../src/core/state';
 import type { BotKind } from './bots';
 import { simulateRound } from './sim';
 
+if (process.env.FUSEMAX) (balance.rules as { fuseMaxS: number }).fuseMaxS = +process.env.FUSEMAX;
 const id = +(process.argv[2] ?? 1);
 const seed = +(process.argv[3] ?? 1);
 const bot = (process.argv[4] ?? 'cautious') as BotKind;

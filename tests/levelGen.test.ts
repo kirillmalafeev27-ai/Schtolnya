@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { balance } from '../src/config/balance';
 import { levels } from '../src/config/levels';
 import { blastCells } from '../src/core/blast';
 import { Cell, isDestructible, neighbor } from '../src/core/grid';
@@ -52,7 +53,8 @@ describe('превью креста совпадает с результатом
         if (!isDestructible(g.cells[i])) continue;
         for (let d = 0; d < 4; d++) {
           const nb = neighbor(g, i, d);
-          if (nb >= 0 && g.cells[nb] === Cell.FLOOR && !s.lairs.includes(nb)) targets.push({ cell: i, stand: nb });
+          if (nb >= 0 && g.cells[nb] === Cell.FLOOR && !s.lairs.includes(nb))
+            targets.push({ cell: i, stand: nb });
         }
       }
       if (!targets.length) continue;
@@ -67,7 +69,7 @@ describe('превью креста совпадает с результатом
       // Не двигаемся: ждём взрыва.
       s = reduce(s, { type: 'SET_INTENT', kind: 'stay' }).state;
       let blast: number[] | null = null;
-      for (let k = 0; k < 400 && !blast; k++) {
+      for (let k = 0; k < 20 * (balance.rules.fuseMaxS + 2) && !blast; k++) {
         const rr = reduce(s, { type: 'TICK', dt: 0.05 });
         s = rr.state;
         for (const e of rr.events) if (e.type === 'BLAST') blast = e.cells;

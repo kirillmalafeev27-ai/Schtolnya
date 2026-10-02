@@ -212,6 +212,11 @@ function main() {
   const botArg = arg('bot', 'all');
   const fuseOv = arg('fuse', '');
   const kstepOv = arg('kstep', '');
+  const fuseMax = arg('fusemax', '');
+  const wake = arg('wake', '');
+  // Правила — константы, но для поиска баланса их можно подменить на время прогона.
+  if (fuseMax) (balance.rules as { fuseMaxS: number }).fuseMaxS = +fuseMax;
+  if (wake) (balance.rules as { wakeAnswers: number }).wakeAnswers = +wake;
   const lvls = (levelArg === 'all' ? levels : [getLevel(+levelArg)]).map((l) => ({
     ...l,
     fuseAnswers: fuseOv ? +fuseOv : l.fuseAnswers,

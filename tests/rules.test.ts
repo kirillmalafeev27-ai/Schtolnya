@@ -27,14 +27,7 @@ describe('крест взрыва (2.3.6)', () => {
   });
 
   it('любая непроходимая клетка гасит луч и сама не повреждается', () => {
-    const s = fromAscii([
-      '#######',
-      '#.....#',
-      '#.R...#',
-      '#.X.R.#',
-      '#H....#',
-      '#######',
-    ]);
+    const s = fromAscii(['#######', '#.....#', '#.R...#', '#.X.R.#', '#H....#', '#######']);
     const origin = at(s, 4, 3);
     const c = blastCross(s.grid, origin, 2);
     // Влево: (3,3) проход, (2,3) крепкая порода — луч гаснет на ней.
@@ -110,7 +103,13 @@ describe('намерения и действия (2.2)', () => {
     const r = new Runner(s);
     r.intent('move', at(r.s, 5, 1));
     // Кобольд встаёт прямо в цели.
-    r.s.kobolds.push({ ...r.s.kobolds[0], id: 0, cell: at(r.s, 5, 1), lair: at(r.s, 5, 1), mode: 'awake' } as never);
+    r.s.kobolds.push({
+      ...r.s.kobolds[0],
+      id: 0,
+      cell: at(r.s, 5, 1),
+      lair: at(r.s, 5, 1),
+      mode: 'awake',
+    } as never);
     r.correct();
     expect(r.s.hero.cell).toBe(at(r.s, 1, 1));
     expect(r.s.hero.ready).toBe(true);
@@ -133,9 +132,10 @@ describe('шашки и взрыв (2.3)', () => {
     expect(r.s.fuse?.cell).toBe(rock);
     expect(r.s.hero.sticks).toBe(4);
     expect(r.s.hero.intent.kind).toBe('shelter');
-    // в укрытие: из (3,1) нужно выйти из креста (2..3,1 в кресте) — до (1,1)? (1,1) на расстоянии 3 от центра.
-    r.correct();
-    r.correct();
+    // Бегом в укрытие (DECISIONS.md): из (3,1) крест держит (2..3,1) — один верный ответ уводит на (1,1) за два шага.
+    const run = r.correct();
+    expect(run.filter((e) => e.type === 'STEP').length).toBe(2);
+    expect(run.every((e) => e.type !== 'STEP' || e.shelter)).toBe(true);
     expect(burningCross(r.s)!.has(r.s.hero.cell)).toBe(false);
     expect(r.s.hero.intent.kind).toBe('stay');
     r.wait(r.s.params.fuseS + 0.1);
@@ -228,8 +228,8 @@ describe('шашки и взрыв (2.3)', () => {
     expect(counts).toEqual([3, 2, 1]);
   });
 
-  it('длительность фитиля зажата в 6..16 с', () => {
-    expect(fromAscii(['#H#'], { tMed: 3, level: 6 }).params.fuseS).toBe(R.fuseMinS);
+  it('длительность фитиля зажата в fuseMinS..fuseMaxS', () => {
+    expect(fromAscii(['#H#'], { tMed: 1, level: 6 }).params.fuseS).toBe(R.fuseMinS);
     expect(fromAscii(['#H#'], { tMed: 10, level: 1 }).params.fuseS).toBe(R.fuseMaxS);
   });
 });
@@ -269,7 +269,7 @@ describe('место закладки и подсказки (2.2.2, 2.8)', () =>
     for (let i = 0; i < 8 && !r.s.fuse; i++) r.correct();
     r.intent('move', at(r.s, 1, 1));
     for (let i = 0; i < 8; i++) r.correct();
-    const ev = r.wait(20);
+    const ev = r.wait(R.fuseMaxS + 2);
     const blast = ev.find((e) => e.type === 'BLAST') as { cells: number[] } | undefined;
     expect(blast?.cells).toEqual(preview);
   });
@@ -341,7 +341,9 @@ describe('кобольд (2.4)', () => {
   });
 
   it('кобольд на кресте оглушается, затем злее: интервал × 0.9, не меньше 0.8 × T_med', () => {
-    const r = new Runner(fromAscii(['###L#########', '#.H.R......K#', '#.###########', '#...........#', '#############']));
+    const r = new Runner(
+      fromAscii(['###L#########', '#.H.R......K#', '#.###########', '#...........#', '#############']),
+    );
     r.intent('plant', at(r.s, 4, 1));
     r.correct();
     r.correct();

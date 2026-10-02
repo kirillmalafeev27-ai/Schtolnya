@@ -96,6 +96,8 @@ export class HeroView {
     return this.root.y;
   }
 
+  private readonly stepQueue: { to: number; shelter: boolean; reduced: boolean }[] = [];
+
   /** Направление взгляда: -1 влево, 1 вправо (по последнему горизонтальному шагу). */
   get face(): -1 | 1 {
     return this.facing;
@@ -113,20 +115,29 @@ export class HeroView {
 
   /** Шаг — прыжок с приплющиванием при приземлении, 180 мс (7.5.12). */
   step(to: number, shelter: boolean, reduced: boolean): void {
+    // Бег в укрытие — несколько шагов за один ответ: играются по очереди, без срезания углов.
+    if (this.moveTween?.isPlaying() && (shelter || this.stepQueue.length)) {
+      this.stepQueue.push({ to, shelter, reduced });
+      return;
+    }
     const tx = cellX(this.g, to);
     const ty = footY(this.g, to);
     if (tx !== this.root.x) this.setFacing(tx < this.root.x ? -1 : 1);
     this.moveTween?.stop();
     this.running = shelter;
-    const dur = A.stepMs;
+    const dur = shelter ? A.stepMs * 0.72 : A.stepMs;
     this.moveTween = this.scene.tweens.add({
       targets: this.root,
       x: tx,
       y: ty,
       duration: dur,
-      ease: 'Sine.easeInOut',
+      ease: shelter ? 'Linear' : 'Sine.easeInOut',
       onUpdate: () => this.syncDepth(),
-      onComplete: () => this.syncDepth(),
+      onComplete: () => {
+        this.syncDepth();
+        const nx = this.stepQueue.shift();
+        if (nx) this.step(nx.to, nx.shelter, nx.reduced);
+      },
     });
     if (reduced) return;
     // Прыжок корпусом и приплющивание.

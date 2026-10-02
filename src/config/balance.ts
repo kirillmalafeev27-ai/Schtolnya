@@ -10,7 +10,7 @@ export const balance = {
     wrongFeedbackMs: 1000,
     /** Фитиль: fuseAnswers × T_med, но не меньше и не больше этих секунд (2.3.4). */
     fuseMinS: 6,
-    fuseMaxS: 16,
+    fuseMaxS: 26,
     /** Кобольд приседает за столько секунд до шага (2.4.4). */
     crouchS: 0.15,
     /** После оглушения интервал шага × angerFactor, но не меньше minStepAnswers × T_med (2.4.6). */

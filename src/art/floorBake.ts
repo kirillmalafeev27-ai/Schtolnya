@@ -16,7 +16,7 @@ export function bakeFloor(
   seed: number,
 ): HTMLCanvasElement {
   const canvas = makeCanvas(g.w * cellPx, g.h * cellPx);
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const rnd = mulberry32(seed ^ 0xf100);
   ctx.fillStyle = P.floor.shadow;
   ctx.fillRect(0, 0, canvas.width, canvas.height);

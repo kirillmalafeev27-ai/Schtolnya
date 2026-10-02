@@ -15,7 +15,10 @@ export type Recipe = (
 ) => void;
 
 export interface GenReport {
+  /** Время от начала до конца с уступками потоку. */
   ms: number;
+  /** Чистое время рисования текстур (бюджет 13.6.1 — до 1.5 с). */
+  busyMs: number;
   count: number;
   pixels: number;
 }
@@ -40,8 +43,11 @@ export class ArtFactory {
     const t0 = performance.now();
     let pixels = 0;
     let sliceStart = performance.now();
+    let busy = 0;
     for (let i = 0; i < list.length; i++) {
+      const g0 = performance.now();
       pixels += this.generate(list[i]);
+      busy += performance.now() - g0;
       if (performance.now() - sliceStart > sliceMs) {
         onProgress?.(i + 1, list.length);
         // Уступаем поток таймером, а не кадром: кадр рендера может быть дорогим, а экран загрузки — это DOM.
@@ -50,12 +56,19 @@ export class ArtFactory {
       }
     }
     onProgress?.(list.length, list.length);
-    return { ms: performance.now() - t0, count: list.length, pixels };
+    return { ms: performance.now() - t0, busyMs: busy, count: list.length, pixels };
   }
 
+  /** Разбивка времени: рисование на канве и регистрация текстуры (для профилирования). */
+  readonly timing = { draw: 0, put: 0 };
+
   generate(entry: ArtEntry): number {
+    const t0 = performance.now();
     const canvas = renderEntry(entry, this.cellPx, this.recipes);
+    const t1 = performance.now();
     putCanvas(this.textures, entry.key, canvas);
+    this.timing.draw += t1 - t0;
+    this.timing.put += performance.now() - t1;
     return canvas.width * canvas.height;
   }
 
@@ -88,7 +101,8 @@ export function renderEntry(
   const cw = Math.ceil(entry.w * cellPx);
   const ch = Math.ceil(entry.h * cellPx);
   const canvas = makeCanvas(cw, ch);
-  const ctx = canvas.getContext('2d')!;
+  // Канва на CPU: рисование не делит GPU с живой WebGL-сценой (на слабых устройствах это секунды).
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const seed = hashString(entry.key) ^ (entry.variant * 0x9e3779b1);
   if (recipe) recipe(ctx, cw, ch, cellPx, entry.variant, mulberry32(seed));
   return canvas;

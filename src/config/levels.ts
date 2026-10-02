@@ -1,4 +1,4 @@
-// Уровни (план, раздел 4). Числа стартовые, окончательные подбираются симуляцией (раздел 14).
+// Уровни (план, раздел 4). Шаг кобольда и фитиль подобраны симуляцией (раздел 14, DECISIONS.md).
 
 export type HallSize = 'S' | 'M';
 
@@ -39,8 +39,8 @@ export const levels: readonly LevelDef[] = [
     hardFraction: 0,
     pockets: 0,
     kobolds: 1,
-    koboldStepAnswers: 1.6,
-    fuseAnswers: 2.4,
+    koboldStepAnswers: 4.5,
+    fuseAnswers: 4.6,
     hints: 'all',
   },
   {
@@ -53,8 +53,8 @@ export const levels: readonly LevelDef[] = [
     hardFraction: 0.15,
     pockets: 1,
     kobolds: 1,
-    koboldStepAnswers: 1.5,
-    fuseAnswers: 2.2,
+    koboldStepAnswers: 4.0,
+    fuseAnswers: 4.4,
     hints: 'all',
   },
   {
@@ -67,8 +67,8 @@ export const levels: readonly LevelDef[] = [
     hardFraction: 0.25,
     pockets: 1,
     kobolds: 1,
-    koboldStepAnswers: 1.45,
-    fuseAnswers: 2.0,
+    koboldStepAnswers: 3.8,
+    fuseAnswers: 4.2,
     hints: 'all',
   },
   {
@@ -81,8 +81,8 @@ export const levels: readonly LevelDef[] = [
     hardFraction: 0.3,
     pockets: 2,
     kobolds: 1,
-    koboldStepAnswers: 1.4,
-    fuseAnswers: 2.0,
+    koboldStepAnswers: 3.5,
+    fuseAnswers: 4.0,
     hints: 'noShelter',
   },
   {
@@ -95,8 +95,8 @@ export const levels: readonly LevelDef[] = [
     hardFraction: 0.3,
     pockets: 2,
     kobolds: 2,
-    koboldStepAnswers: 1.6,
-    fuseAnswers: 2.0,
+    koboldStepAnswers: 4.0,
+    fuseAnswers: 4.0,
     hints: 'noShelter',
   },
   {
@@ -109,8 +109,8 @@ export const levels: readonly LevelDef[] = [
     hardFraction: 0.35,
     pockets: 2,
     kobolds: 2,
-    koboldStepAnswers: 1.5,
-    fuseAnswers: 1.8,
+    koboldStepAnswers: 3.8,
+    fuseAnswers: 4.2,
     hints: 'noShelter',
   },
   {
@@ -123,8 +123,8 @@ export const levels: readonly LevelDef[] = [
     hardFraction: 0.35,
     pockets: 2,
     kobolds: 2,
-    koboldStepAnswers: 1.45,
-    fuseAnswers: 1.8,
+    koboldStepAnswers: 3.5,
+    fuseAnswers: 4.0,
     hints: 'burningOnly',
   },
 ];

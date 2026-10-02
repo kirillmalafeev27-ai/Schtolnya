@@ -50,7 +50,7 @@ export function sfxWordTexture(
   const canvas = document.createElement('canvas');
   canvas.width = Math.ceil(tw + pad * 2);
   canvas.height = Math.ceil(size * 1.5 + pad);
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.transform(1, 0, -0.12, 1, 0, 0);
   ctx.font = weight + font;
