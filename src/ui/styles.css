@@ -1,0 +1,125 @@
+/* «Шахта»: страница комикса из двух панелей (план, 7.1 и 11). Цвета — только CSS-переменные из палитры. */
+
+.mine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background-color: var(--page);
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--page-dots) 0 3.1px, transparent 3.6px),
+    radial-gradient(circle at 50% 50%, var(--page-dots) 0 3.1px, transparent 3.6px);
+  background-size: 18px 18px;
+  background-position:
+    0 0,
+    9px 9px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  --gutter: 12px;
+  --quiz-size: 340px;
+  --frame: 4px;
+}
+
+.mine *,
+.mine *::before,
+.mine *::after {
+  box-sizing: border-box;
+}
+
+.mine__page {
+  position: absolute;
+  inset: calc(var(--gutter) + env(safe-area-inset-top, 0px)) calc(var(--gutter) + env(safe-area-inset-right, 0px))
+    calc(var(--gutter) + env(safe-area-inset-bottom, 0px)) calc(var(--gutter) + env(safe-area-inset-left, 0px));
+  display: grid;
+  gap: calc(var(--gutter) + 3px);
+}
+
+.mine[data-orient='portrait'] .mine__page {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--quiz-size);
+}
+
+.mine[data-orient='landscape'] .mine__page {
+  grid-template-columns: minmax(0, 1fr) var(--quiz-size);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* Рамка панели: 4 px тушью и 3 px белого снаружи, жёсткая тень страницы. */
+.mine__panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: var(--frame) solid var(--ink);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 3px var(--panel),
+    6px 7px 0 3px var(--ink-55);
+}
+
+.mine__world {
+  background: var(--cave);
+}
+
+.mine__canvas-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 1px;
+}
+
+.mine__canvas-host canvas {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  touch-action: none;
+  outline: none;
+}
+
+.mine__world-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mine__quiz {
+  background: var(--panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mine__screens {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.mine__screens > * {
+  pointer-events: auto;
+}
+
+.mine--reduced * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+.mine :focus-visible {
+  outline: 3px solid var(--caption);
+  outline-offset: 3px;
+}
+
+.de {
+  font-family: 'Rubik', system-ui, sans-serif;
+}
+
+.sfx {
+  font-family: 'Bangers', 'Rubik', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
