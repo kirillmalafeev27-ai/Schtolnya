@@ -1038,3 +1038,121 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ───────────── Интро раунда (11.5.3) ───────────── */
+
+.intro {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms;
+}
+
+.intro.is-on {
+  opacity: 1;
+}
+
+.intro__lines {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.intro__line-under,
+.intro__ring-under {
+  fill: none;
+  stroke: var(--panel);
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.intro__line,
+.intro__ring {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.intro__ring {
+  stroke: var(--caption);
+  stroke-dasharray: 10 7;
+}
+
+.intro__plate {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: min(90%, 420px);
+  width: max-content;
+  text-wrap: balance;
+  padding: 8px 14px;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ink);
+  background: var(--caption);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  transform: translate(-50%, -50%) rotate(-2deg) scale(0.6);
+  transition: transform 220ms cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+
+.intro.is-on .intro__plate {
+  transform: translate(-50%, -50%) rotate(-2deg) scale(1);
+}
+
+.intro__tag {
+  position: absolute;
+  transform: translate(-50%, 0) rotate(2deg);
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--panel);
+  background: var(--ink);
+  border: 2px solid var(--panel);
+  white-space: nowrap;
+}
+
+/* Значок действия над героем после верного ответа (9.2). */
+.act-pop {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  padding: 3px;
+  margin: -17px 0 0 -17px;
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 2px 2px 0 var(--ink);
+  animation: act-pop 480ms ease-out forwards;
+  z-index: 3;
+}
+
+.act-pop svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes act-pop {
+  0% {
+    transform: translateY(6px) scale(0.3);
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(-4px) scale(1.12);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(-10px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-18px) scale(0.9);
+    opacity: 0;
+  }
+}

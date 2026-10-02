@@ -73,6 +73,14 @@ export class GameScene extends Phaser.Scene {
   private lastTrapp = 0;
   private knisterShown = false;
   private frozen = false;
+  private nextSchnarch = Infinity;
+  /** Тап, пропустивший интро, не должен стать ходом. */
+  private inputBlockedUntil = 0;
+  private intro: {
+    tweens: Phaser.Tweens.Tween[];
+    land: { obj: { y: number }; y: number }[];
+    heroY: number;
+  } | null = null;
   /** Готовность сцены: create() отработал. */
   ready = false;
   onReady: (() => void) | null = null;
@@ -120,11 +128,27 @@ export class GameScene extends Phaser.Scene {
     juice.avoid = () => {
       const v = this.views;
       if (!v) return [];
-      const boxes = [
-        { x: v.hero.x - CELL * 0.38, y: v.hero.y - CELL * 1.18, w: CELL * 0.76, h: CELL * 1.22 },
-      ];
-      for (const k of v.kobolds)
-        boxes.push({ x: k.x - CELL * 0.42, y: k.y - CELL * 1.1, w: CELL * 0.84, h: CELL * 1.14 });
+      // Рамки по текущему положению фигур и по клеткам, куда они идут: шаг может ещё анимироваться.
+      const st = v.ctrl.state;
+      const g = st.grid;
+      const heroBox = (x: number, y: number) => ({
+        x: x - CELL * 0.38,
+        y: y - CELL * 1.18,
+        w: CELL * 0.76,
+        h: CELL * 1.22,
+      });
+      const kobBox = (x: number, y: number) => ({
+        x: x - CELL * 0.42,
+        y: y - CELL * 1.1,
+        w: CELL * 0.84,
+        h: CELL * 1.14,
+      });
+      const boxes = [heroBox(v.hero.x, v.hero.y), heroBox(cellX(g, st.hero.cell), footY(g, st.hero.cell))];
+      v.kobolds.forEach((k, i) => {
+        boxes.push(kobBox(k.x, k.y));
+        const kc = st.kobolds[i]?.cell;
+        if (kc !== undefined) boxes.push(kobBox(cellX(g, kc), footY(g, kc)));
+      });
       return boxes;
     };
     const blast = new BlastView(this, layers, juice, ts);
@@ -164,6 +188,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   clearRound(): void {
+    this.intro = null;
+    this.nextSchnarch = Infinity;
     if (!this.views) return;
     const v = this.views;
     v.lights.destroy();
@@ -174,6 +200,52 @@ export class GameScene extends Phaser.Scene {
     this.views = null;
     this.running = false;
     this.tweens.timeScale = 1;
+  }
+
+  /** Интро раунда (11.5.3): клеть с героем опускается в штольню, всё остальное стоит. */
+  playIntro(descendMs: number): void {
+    const v = this.views;
+    if (!v || v.juice.reduced) return;
+    const dy = CELL * 2.2;
+    const tweens: Phaser.Tweens.Tween[] = [];
+    const land: { obj: { y: number }; y: number }[] = [];
+    for (const im of [v.world.liftImage, v.world.liftFront]) {
+      land.push({ obj: im, y: im.y });
+      im.y -= dy;
+      tweens.push(this.tweens.add({ targets: im, y: im.y + dy, duration: descendMs, ease: 'Quad.easeOut' }));
+    }
+    const heroY = v.hero.y;
+    tweens.push(...v.hero.descend(dy, descendMs));
+    this.intro = { tweens, land, heroY };
+  }
+
+  /** Конец интро: всё на местах, «GLÜCK AUF!». */
+  finishIntro(): void {
+    const v = this.views;
+    if (!v) return;
+    if (this.intro) {
+      for (const t of this.intro.tweens) t.remove();
+      for (const l of this.intro.land) l.obj.y = l.y;
+      v.hero.land(this.intro.heroY);
+      this.intro = null;
+    }
+    const s = v.ctrl.state;
+    const g = s.grid;
+    // Под героем, который только что вышел из клети: сверху — край зала.
+    this.say('gluckAuf', cellX(g, s.hero.cell), footY(g, s.hero.cell), 'win', true, 1300, true);
+    this.nextSchnarch = this.time.now + 2200;
+  }
+
+  /** Точка над головой героя в CSS-пикселях панели мира. */
+  heroCss(): { x: number; y: number } | null {
+    const v = this.views;
+    if (!v) return null;
+    return this.worldToCss(v.hero.x, v.hero.y - CELL * 1.35);
+  }
+
+  /** Не принимать тапы по миру ближайшие ms миллисекунд. */
+  blockInput(ms: number): void {
+    this.inputBlockedUntil = performance.now() + ms;
   }
 
   /** Логика идёт только во время игры: не в интро, не на паузе, не после конца. */
@@ -284,9 +356,26 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const W = this.scale.width;
     const dpr = W / Math.max(1, this.game.canvas.clientWidth || W);
-    const sx = (x - cam.worldView.x) * cam.zoom;
-    const sy = (y - cam.worldView.y) * cam.zoom;
+    const view = this.viewRect();
+    const sx = (x - view.x) * cam.zoom;
+    const sy = (y - view.y) * cam.zoom;
     return { x: sx / dpr, y: sy / dpr };
+  }
+
+  /** Видимая область мира. worldView камеры обновляется только при отрисовке — считаем сами. */
+  private viewRect(): { x: number; y: number; w: number; h: number } {
+    const cam = this.cameras.main;
+    const w = cam.width / cam.zoom;
+    const h = cam.height / cam.zoom;
+    return { x: cam.scrollX + cam.width / 2 - w / 2, y: cam.scrollY + cam.height / 2 - h / 2, w, h };
+  }
+
+  /** Панорама звука по x: −1 у левого края кадра, 1 — у правого. */
+  panOf(worldX: number): number {
+    const wv = this.viewRect();
+    if (wv.w <= 0) return 0;
+    const p = (worldX - (wv.x + wv.w / 2)) / (wv.w / 2);
+    return Math.max(-1, Math.min(1, p));
   }
 
   cellToCss(cell: number): { x: number; y: number } {
@@ -307,6 +396,7 @@ export class GameScene extends Phaser.Scene {
   private onPointer(p: Phaser.Input.Pointer): void {
     const v = this.views;
     if (!v || this.attract || !this.running) return;
+    if (performance.now() < this.inputBlockedUntil) return;
     const s = v.ctrl.state;
     if (s.status !== 'playing' || s.paused) return;
     const wp = this.cameras.main.getWorldPoint(p.x, p.y);
@@ -345,10 +435,11 @@ export class GameScene extends Phaser.Scene {
     style: SfxStyleName,
     important = false,
     hold?: number,
+    below = false,
   ): void {
     const v = this.views;
     if (!v) return;
-    v.juice.word(this.opts.words[key], x, y, style, { important, hold });
+    v.juice.word(this.opts.words[key], x, y, style, { important, hold, below });
   }
 
   private onEvents(ctrl: RoundController, events: GameEvent[], s: GameState): void {
@@ -654,6 +745,12 @@ export class GameScene extends Phaser.Scene {
       }
     }
     v.lights.update({ state: st, hero: v.hero, kobolds: v.kobolds, world: v.world, spark: v.spark });
+    // «SCHNARCH…» над спящим кобольдом — изредка, без вытеснения важных слов.
+    if (this.running && !this.attract && st.status === 'playing' && !st.paused && time >= this.nextSchnarch) {
+      this.nextSchnarch = time + 9000;
+      const k = st.kobolds.findIndex((kb) => kb.mode === 'sleep');
+      if (k >= 0) this.say('schnarch', v.kobolds[k].x + CELL * 0.2, v.kobolds[k].y - CELL * 0.75, 'plain');
+    }
     // Пузыри сна.
     v.zzz.forEach((z, k) => {
       if (!z.visible) return;

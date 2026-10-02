@@ -122,6 +122,10 @@ async function main() {
       actions,
       gameTime: last?.time.toFixed(1),
       results: await page.locator('.results').count(),
+      audio: await page.evaluate(() => {
+        const w = window as unknown as { mine: { app: { audio: { mixer: { ctx: AudioContext | null } } } } };
+        return w.mine.app.audio.mixer.ctx?.state ?? 'none';
+      }),
       errors: errors.filter((e) => !e.includes('[vite]')).slice(0, 10),
     }),
   );

@@ -120,9 +120,11 @@ export class ResultsScreen {
     });
     if (!lines.length) totalEl.textContent = String(d.score);
     this.later(() => this.el.classList.add('is-done'), base + step * (lines.length + 1));
-    // Тап пропускает анимацию.
+    // Тап пропускает анимацию: оставшиеся шаги подсчёта не догоняют итог.
     this.el.addEventListener('pointerdown', () => {
-      this.el.classList.add('is-skip');
+      for (const t of this.timers) clearTimeout(t);
+      this.timers = [];
+      this.el.classList.add('is-skip', 'is-done');
       totalEl.textContent = String(d.score);
     });
   }

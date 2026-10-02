@@ -22,9 +22,11 @@ import type { QuestionProvider } from '../shared/questions/types';
 import { GearWidget } from '../ui/GearWidget';
 import { iconBoot, iconDynamite, iconPalm, iconPause, iconReady, iconShield, iconWait } from '../ui/icons';
 import { WorldPlates } from '../ui/plates';
+import { IntroOverlay } from '../ui/IntroOverlay';
 import { PauseScreen } from '../ui/screens/PauseScreen';
 import { ResultsScreen } from '../ui/screens/ResultsScreen';
 import { applyTheme } from '../ui/theme';
+import { MineAudio } from '../audio/MineAudio';
 import { RoundController } from './RoundController';
 import { defaultStorage, GameStore, type KeyValueStorage } from './storage';
 
@@ -74,6 +76,12 @@ export class MineApp {
   private roundOverTimer = 0;
   private unsub: (() => void) | null = null;
   private artReport: GenReport | null = null;
+  readonly audio: MineAudio;
+  private introActive = false;
+  private introTimer = 0;
+  private introOverlay: IntroOverlay | null = null;
+  /** Что сделает верный ответ — запоминается до ответа для значка над героем. */
+  private answerKindNow: string = 'step';
   reducedMotion = false;
 
   constructor(
@@ -81,6 +89,8 @@ export class MineApp {
     private readonly options: MineOptions,
   ) {
     this.store = new GameStore(options.storage ?? defaultStorage());
+    this.audio = new MineAudio();
+    this.applySoundSettings();
     this.pace = new PaceTracker(this.store.paceStorage(), balance.pace);
     const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     this.reducedMotion = this.store.settings.reducedMotion ?? prefersReduced;
@@ -148,6 +158,9 @@ export class MineApp {
     });
 
     window.addEventListener('keydown', this.onKey);
+    // AudioContext — только по жесту игрока (10.7).
+    window.addEventListener('pointerdown', this.onGesture, true);
+    window.addEventListener('keydown', this.onGesture, true);
     document.addEventListener('visibilitychange', this.onVisibility);
     window.addEventListener('blur', this.onBlur);
     this.relayout();
@@ -275,6 +288,10 @@ export class MineApp {
     this.pauseScreen = null;
     this.plates.hideAll();
     clearTimeout(this.roundOverTimer);
+    clearTimeout(this.introTimer);
+    this.introActive = false;
+    this.introOverlay?.destroy();
+    this.introOverlay = null;
     this.unsub?.();
     const def = getLevel(id);
     const landscape = this.layout?.landscape ?? false;
@@ -294,19 +311,88 @@ export class MineApp {
       dpr: this.dpr,
       onPlate: (kind, cell, visible) => this.plates.show(kind, cell, visible),
       onPickupFly: (kind, from) => this.flyToGear(kind, from),
+      onEvent: (e, st) => this.audio.onEvent(e, st),
     });
+    this.audio.attach(ctrl, this.scene);
     this.unsub = ctrl.subscribe((events, state) => this.onRoundEvents(events, state));
     this.syncUi(ctrl.state);
-    this.panel.setMode('active');
-    this.scene.setRunning(true);
+    this.beginIntro();
+  }
+
+  // ───────────── интро раунда (11.5.3) ─────────────
+
+  private beginIntro(): void {
+    const scene = this.scene;
+    const ctrl = this.ctrl;
+    if (!scene || !ctrl) return;
+    this.introActive = true;
+    this.panel.setMode('intro');
+    this.panel.setHeader(iconWait, ru.answer.intro);
+    scene.playIntro(950);
+    const s = ctrl.state;
+    const cellPx = scene.cellCssSize();
+    const targets: { x: number; y: number; label: string }[] = [
+      { ...scene.cellToCss(s.vein), label: ru.intro.vein },
+    ];
+    const k = s.kobolds[0];
+    if (k) targets.push({ ...scene.cellToCss(k.cell), label: ru.intro.lair });
+    this.introOverlay?.destroy();
+    this.introOverlay = new IntroOverlay(this.overlay, targets, cellPx, [
+      scene.cellToCss(s.lift),
+      scene.cellToCss(s.hero.cell),
+    ]);
+    clearTimeout(this.introTimer);
+    this.introTimer = window.setTimeout(() => this.endIntro(), balance.anim.introMaxMs - 200);
+  }
+
+  /** Конец интро (по таймеру или тапу): «GLÜCK AUF!» и раунд пошёл. */
+  private endIntro(): void {
+    if (!this.introActive) return;
+    this.introActive = false;
+    clearTimeout(this.introTimer);
+    this.introOverlay?.destroy();
+    this.introOverlay = null;
+    this.scene?.finishIntro();
+    if (this.ctrl) this.syncUi(this.ctrl.state);
+    this.scene?.setRunning(true);
+  }
+
+  /** Над героем мелькает значок действия верного ответа (9.2). */
+  private flashAction(kind: string): void {
+    const p = this.scene?.heroCss();
+    if (!p) return;
+    const icon =
+      kind === 'plant'
+        ? iconDynamite
+        : kind === 'shelter'
+          ? iconShield
+          : kind === 'stay'
+            ? iconPalm
+            : iconBoot;
+    const el = document.createElement('div');
+    el.className = 'act-pop';
+    el.innerHTML = icon;
+    el.style.left = `${p.x}px`;
+    el.style.top = `${p.y}px`;
+    this.overlay.appendChild(el);
+    window.setTimeout(() => el.remove(), 520);
   }
 
   private onRoundEvents(events: GameEvent[], s: GameState): void {
     for (const e of events) {
-      if (e.type === 'ANSWERED') this.pace.record(e.timeMs, e.correct, !e.fuseBurning);
+      if (e.type === 'ANSWERED') {
+        this.pace.record(e.timeMs, e.correct, !e.fuseBurning);
+        if (e.correct) this.flashAction(this.answerKindNow);
+      }
       if (e.type === 'CAUGHT' || e.type === 'HERO_BLASTED' || e.type === 'ESCAPED') this.onRoundOver(s);
-      if (e.type === 'PAUSED') this.panel.setPaused(true);
-      if (e.type === 'RESUMED') this.panel.setPaused(false);
+      if (e.type === 'PAUSED') {
+        this.panel.setPaused(true);
+        this.audio.setPaused(true);
+      }
+      if (e.type === 'RESUMED') {
+        this.panel.setPaused(false);
+        this.audio.setPaused(false);
+      }
     }
     this.syncUi(s);
   }
@@ -315,6 +401,8 @@ export class MineApp {
     const ctrl = this.ctrl;
     if (!ctrl) return;
     this.gear.update(s.hero.sticks, s.hero.hasVein, s.loot, s.hero.intent.kind === 'stay');
+    this.answerKindNow = ctrl.answerKind();
+    if (this.introActive) return;
     if (s.status !== 'playing') {
       this.panel.setMode('over');
       this.panel.setHeader(iconWait, ru.answer.over);
@@ -411,6 +499,7 @@ export class MineApp {
         onRetry: () => this.startLevel(this.levelId),
         onNext: () => this.startLevel(Math.min(this.levelId + 1, levels[levels.length - 1].id)),
         onMenu: () => this.startLevel(this.levelId),
+        onTally: (i) => this.audio.tally(i),
       },
     );
   }
@@ -465,8 +554,31 @@ export class MineApp {
     if (ctrl && ctrl.state.paused) ctrl.resume();
   }
 
+  private onGesture = (e: Event) => {
+    this.audio.unlock();
+    // Тап или клавиша пропускают интро (кроме паузы и служебных клавиш).
+    if (this.introActive && !this.ctrl?.state.paused) {
+      if (e instanceof KeyboardEvent && (e.altKey || e.ctrlKey || e.metaKey || e.key === 'Escape')) return;
+      if (e.target instanceof Element && e.target.closest('.mine__pause')) return;
+      // Жест пропуска интро не становится ходом или ответом.
+      e.stopPropagation();
+      if (e.type === 'keydown') e.preventDefault();
+      this.scene?.blockInput(300);
+      this.endIntro();
+    }
+  };
+
+  /** Громкости и выключатель звука из настроек (10.8). */
+  applySoundSettings(): void {
+    const st = this.store.settings;
+    this.audio.setVolumes(st.sfxVolume, st.ambientVolume, st.soundOn);
+  }
+
   private onVisibility = () => {
-    if (document.visibilityState === 'hidden') this.pause();
+    if (document.visibilityState === 'hidden') {
+      this.pause();
+      this.audio.setPaused(true);
+    } else if (!this.ctrl?.state.paused) this.audio.setPaused(false);
   };
 
   private onBlur = () => this.pause();
@@ -514,7 +626,11 @@ export class MineApp {
   destroy(): void {
     this.destroyed = true;
     clearTimeout(this.roundOverTimer);
+    clearTimeout(this.introTimer);
     window.removeEventListener('keydown', this.onKey);
+    window.removeEventListener('pointerdown', this.onGesture, true);
+    window.removeEventListener('keydown', this.onGesture, true);
+    this.audio.destroy();
     document.removeEventListener('visibilitychange', this.onVisibility);
     window.removeEventListener('blur', this.onBlur);
     this.ro?.disconnect();

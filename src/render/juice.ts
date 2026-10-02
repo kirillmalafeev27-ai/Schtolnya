@@ -215,7 +215,7 @@ export class Juice {
     x: number,
     y: number,
     style: SfxStyleName,
-    opts: { important?: boolean; hold?: number } = {},
+    opts: { important?: boolean; hold?: number; below?: boolean } = {},
   ): Phaser.GameObjects.Image | null {
     const now = this.scene.time.now;
     this.words = this.words.filter((w) => w.img.active);
@@ -229,7 +229,12 @@ export class Juice {
     const ww = src.width * this.ts * 0.8;
     const wh = src.height * this.ts * 0.6;
     // Кандидаты: над событием, выше, сбоку, ниже. Берём первое место без перекрытий.
+    const below = [
+      { x, y: y + CELL * 0.55 },
+      { x, y: y + CELL * 1.1 },
+    ];
     const cands = [
+      ...(opts.below ? below : []),
       { x, y: y - CELL * 0.85 },
       { x, y: y - CELL * 1.4 },
       { x: x + CELL * 1.05, y: y - CELL * 0.55 },

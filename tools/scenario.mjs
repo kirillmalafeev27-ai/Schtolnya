@@ -50,7 +50,10 @@ const plan = await page.evaluate(() => {
 });
 console.log('plan', JSON.stringify(plan));
 async function answer(n = 1) {
-  for (let k = 0; k < n; k++) await page.evaluate(() => window.mine.app.round.answer(true, 3000));
+  for (let k = 0; k < n; k++) {
+    await page.evaluate(() => window.mine.app.round.answer(true, 3000));
+    await page.waitForTimeout(450);
+  }
 }
 await page.evaluate((p) => window.mine.app.round.setIntent('plant', p.rock), plan);
 if (name === 'preview') {
@@ -63,7 +66,9 @@ if (name === 'preview') {
     await page.screenshot({ path: `shots/sc-${name}.png` });
   } else {
     // Ускорить фитиль до конца и снять взрыв.
-    await page.evaluate(() => window.mine.app.round.setIntent('stay'));
+    // Герой уходит в укрытие, чтобы снять взрыв без проигрыша.
+    await page.evaluate(() => window.mine.app.round.setIntent('shelter'));
+    await answer(3);
     await page.evaluate(() => {
       const r = window.mine.app.round;
       while (r.state.fuse) r.tick(0.1);

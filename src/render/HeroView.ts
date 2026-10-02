@@ -322,6 +322,28 @@ export class HeroView {
     this.shadow.setVisible(v);
   }
 
+  /** Спуск в клети в начале раунда (интро): фигура опускается, тень проявляется у земли. */
+  descend(dy: number, duration: number): Phaser.Tweens.Tween[] {
+    const y = this.root.y;
+    this.root.y = y - dy;
+    this.shadow.setAlpha(0);
+    return [
+      this.scene.tweens.add({ targets: this.root, y, duration, ease: 'Quad.easeOut' }),
+      this.scene.tweens.add({
+        targets: this.shadow,
+        alpha: 1,
+        delay: duration * 0.7,
+        duration: duration * 0.3,
+      }),
+    ];
+  }
+
+  /** Поставить фигуру на место мгновенно (пропуск интро). */
+  land(y: number): void {
+    this.root.y = y;
+    this.shadow.setAlpha(1);
+  }
+
   /** Подъём вместе с клетью при победе. */
   rideUp(dy: number, duration: number): void {
     this.scene.tweens.add({

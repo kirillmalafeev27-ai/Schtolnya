@@ -10,6 +10,13 @@ const browser = await chromium.launch({
 const dpr = +(process.argv[7] || 1);
 const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: dpr });
 const logs = [];
+// SMOKE_SETTINGS='{"quality":"low"}' — подложить настройки до загрузки.
+if (process.env.SMOKE_SETTINGS) {
+  await page.addInitScript(
+    (v) => window.localStorage.setItem('mine:settings', v),
+    process.env.SMOKE_SETTINGS,
+  );
+}
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 await page.goto(url, { waitUntil: 'networkidle' });
