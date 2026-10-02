@@ -149,6 +149,10 @@ export const balance = {
     genBudgetMs: 1500,
     floorVariants: 8,
     timberEvery: 3,
+    /** Поля вида вокруг зала, в клетках: сверху — «потолок» для канатов клети и плашки снаряжения. */
+    viewPadTop: 1.0,
+    viewPadSide: 0.12,
+    viewPadBottom: 0.1,
   },
 
   /** Раскладка экрана (11.1). */
