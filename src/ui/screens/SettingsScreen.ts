@@ -3,6 +3,18 @@
 import type { Settings } from '../../app/storage';
 import type { HintLevel } from '../../config/levels';
 import { ru } from '../../i18n/ru';
+import type { QuizSettings, QuizStatus } from '../../shared/questions/QuizBankProvider';
+
+/** Тема заданий — уровень и грамматика, как в меню обучения See Escape. */
+export interface LearningControls {
+  settings: QuizSettings;
+  levels: readonly string[];
+  grammarTopics: readonly string[];
+  status: QuizStatus;
+  onChange: (patch: Partial<QuizSettings>) => void;
+}
+
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
 export class SettingsScreen {
   readonly el: HTMLElement;
@@ -11,6 +23,7 @@ export class SettingsScreen {
     host: HTMLElement,
     initial: Settings,
     h: { onChange: (patch: Partial<Settings>) => void; onClose: () => void },
+    learning?: LearningControls,
   ) {
     const S = ru.settingsScreen;
     const st = { ...initial };
@@ -75,16 +88,21 @@ export class SettingsScreen {
             ['ru', S.sfxLangRu],
           ])}
         </div>
+        ${learning ? this.learningHtml(learning, seg) : ''}
         <button type="button" class="btn btn--primary settings__done">${S.done}</button>
       </div>`;
     host.appendChild(this.el);
 
     this.el.querySelectorAll<HTMLElement>('.seg').forEach((g) => {
-      const name = g.dataset.name as keyof Settings;
+      const name = g.dataset.name as keyof Settings | 'level';
       g.querySelectorAll<HTMLButtonElement>('.seg__opt').forEach((b) => {
         b.addEventListener('click', () => {
           g.querySelectorAll('.seg__opt').forEach((o) => o.setAttribute('aria-checked', String(o === b)));
           const raw = b.dataset.v!;
+          if (name === 'level') {
+            learning?.onChange({ level: raw as QuizSettings['level'] });
+            return;
+          }
           let patch: Partial<Settings>;
           if (name === 'soundOn') patch = { soundOn: raw === 'true' };
           else if (name === 'reducedMotion') patch = { reducedMotion: raw === 'true' };
@@ -103,6 +121,11 @@ export class SettingsScreen {
         h.onChange(inp.dataset.name === 'sfxVolume' ? { sfxVolume: v } : { ambientVolume: v });
       });
     });
+    this.el
+      .querySelector<HTMLSelectElement>('.settings__select[data-name="grammarTopic"]')
+      ?.addEventListener('change', (e) => {
+        learning?.onChange({ grammarTopic: (e.target as HTMLSelectElement).value });
+      });
     this.el.querySelector<HTMLButtonElement>('.settings__done')!.addEventListener('click', h.onClose);
     this.el.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -113,6 +136,41 @@ export class SettingsScreen {
     this.el
       .querySelector<HTMLButtonElement>('.seg__opt[aria-checked="true"]')
       ?.focus({ preventScroll: true });
+  }
+
+  private learningHtml(
+    l: LearningControls,
+    seg: (name: string, value: string, opts: [string, string][]) => string,
+  ) {
+    const S = ru.settingsScreen;
+    return `
+        <h3 class="settings__section">${S.learning}</h3>
+        <div class="settings__row">
+          <span class="settings__label">${S.level}</span>
+          ${seg(
+            'level',
+            l.settings.level,
+            l.levels.map((v) => [v, v]),
+          )}
+        </div>
+        <label class="settings__row settings__row--col">
+          <span class="settings__label">${S.grammarTopic}</span>
+          <select class="settings__select" data-name="grammarTopic" lang="de">
+            ${l.grammarTopics
+              .map(
+                (t) =>
+                  `<option value="${esc(t)}"${t === l.settings.grammarTopic ? ' selected' : ''}>${esc(t)}</option>`,
+              )
+              .join('')}
+          </select>
+        </label>
+        <p class="settings__note" data-note="learning" role="status">${S.status[l.status]}</p>`;
+  }
+
+  /** Состояние генерации вопросов меняется, пока экран открыт. */
+  setLearningStatus(status: QuizStatus): void {
+    const note = this.el.querySelector<HTMLElement>('[data-note="learning"]');
+    if (note) note.textContent = ru.settingsScreen.status[status];
   }
 
   destroy(): void {

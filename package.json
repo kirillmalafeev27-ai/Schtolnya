@@ -4,9 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "description": "«Шахта» (Das Bergwerk) — игра для изучения немецкого",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "start": "node server.js",
+    "start:northflank": "node server.js",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

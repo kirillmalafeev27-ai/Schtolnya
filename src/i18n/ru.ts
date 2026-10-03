@@ -114,6 +114,16 @@ export const ru = {
     on: 'Вкл',
     off: 'Выкл',
     done: 'Готово',
+    // Тема заданий — как меню обучения See Escape.
+    learning: 'Немецкий: тема заданий',
+    level: 'Уровень',
+    grammarTopic: 'Грамматическая тема',
+    status: {
+      checking: 'Проверяю генерацию вопросов',
+      online: 'AI подключен',
+      loading: 'AI подгружает вопросы',
+      fallback: 'Fallback вопросы',
+    },
   },
 
   debug: {

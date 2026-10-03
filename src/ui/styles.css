@@ -257,6 +257,23 @@
   overflow: hidden;
 }
 
+.quiz__task {
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Указание к сгенерированному заданию (See Escape: «Waehle die richtige Option.»). */
+.quiz__instruction {
+  margin: 0;
+  max-width: 100%;
+  flex: none;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.2;
+  opacity: 0.75;
+}
+
 .quiz__prompt {
   margin: 0;
   max-width: 100%;
@@ -283,6 +300,17 @@
 
 .quiz[data-orient='landscape'] .quiz__options {
   grid-template-columns: 1fr;
+}
+
+/* Варианты — целые предложения: столбиком и ниже, чтобы поместились четыре строки. */
+.quiz__options[data-long] {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.quiz__options[data-long] .quiz__opt {
+  min-height: 44px;
+  padding: 6px 12px;
 }
 
 .quiz[data-orient='landscape'] .quiz__options[data-n='3'] .quiz__opt:nth-child(3) {
@@ -1603,8 +1631,9 @@
 .settings {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   overflow-y: auto;
   padding: 16px;
   pointer-events: auto;
@@ -1615,6 +1644,8 @@
 }
 
 .settings__panel {
+  /* Поля auto центрируют панель и не обрезают её верх, когда она выше экрана. */
+  margin: auto 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1658,6 +1689,29 @@
   margin: -4px 0 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+.settings__section {
+  margin: 6px 0 0;
+  padding-top: 10px;
+  border-top: 3px solid var(--ink);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.settings__select {
+  flex: none;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 8px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .seg {

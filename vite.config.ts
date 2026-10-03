@@ -21,7 +21,8 @@ function phaserTexIdFix(): Plugin {
 
 export default defineConfig({
   base: './',
-  server: { host: true, port: 5173 },
+  // /api — к node server.js (npm start): генерация вопросов из See Escape работает и в dev.
+  server: { host: true, port: 5173, proxy: { '/api': 'http://127.0.0.1:8080' } },
   plugins: [phaserTexIdFix()],
   // Без предсборки, иначе исправление шейдера не дойдёт до dev-сервера.
   optimizeDeps: { exclude: ['phaser'] },

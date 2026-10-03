@@ -28,4 +28,28 @@ export default tseslint.config(
       'no-constant-condition': ['error', { checkLoops: false }],
     },
   },
+  {
+    // Node-сервер и генератор вопросов, перенесённые из See Escape.
+    files: ['server.js', 'quiz-generation.cjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        fetch: 'readonly',
+        AbortController: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        require: 'readonly',
+        module: 'writable',
+      },
+    },
+    // quiz-generation.cjs перенесён без изменений, поэтому его стиль не правится под линтер.
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-useless-escape': 'off',
+    },
+  },
 );

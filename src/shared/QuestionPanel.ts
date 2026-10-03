@@ -27,6 +27,9 @@ export interface AnswerResult {
 
 export type PanelMode = 'intro' | 'active' | 'ready' | 'over';
 
+/** Вариант длиннее этого числа знаков — целое предложение, варианты встают столбиком. */
+const LONG_OPTION_CHARS = 22;
+
 export class QuestionPanel {
   readonly el: HTMLElement;
   private readonly head: HTMLElement;
@@ -108,6 +111,25 @@ export class QuestionPanel {
 
   /** Загрузить первый вопрос и заранее следующий (12.4). */
   async start(): Promise<void> {
+    this.upcoming = this.provider.next();
+    await this.showNext(false);
+  }
+
+  /**
+   * Сбросить показанный и заранее взятый вопросы и взять новые — когда пришли сгенерированные
+   * вопросы по выбранной теме, а на экране ещё запасной. Неотвеченные вопросы возвращаются поставщику.
+   */
+  async reload(): Promise<void> {
+    if (this.destroyed || this.feedback) return;
+    const current = this.current;
+    const upcoming = this.upcoming;
+    this.upcoming = null;
+    if (current) this.provider.release?.(current);
+    if (upcoming) {
+      const q = await upcoming;
+      this.provider.release?.(q);
+    }
+    if (this.destroyed) return;
     this.upcoming = this.provider.next();
     await this.showNext(false);
   }
@@ -195,6 +217,12 @@ export class QuestionPanel {
     card.className = 'quiz__card';
     const task = document.createElement('div');
     task.className = 'quiz__task';
+    if (q.instruction) {
+      const instruction = document.createElement('p');
+      instruction.className = 'quiz__instruction';
+      instruction.textContent = q.instruction;
+      task.appendChild(instruction);
+    }
     const prompt = document.createElement('p');
     prompt.className = 'quiz__prompt';
     prompt.lang = q.promptLang;
@@ -203,6 +231,8 @@ export class QuestionPanel {
     const opts = document.createElement('div');
     opts.className = 'quiz__options';
     opts.dataset.n = String(q.options.length);
+    // Целые предложения (порядок слов) в сетку 2 × 2 не помещаются — тогда варианты идут столбиком.
+    if (q.options.some((o) => o.length > LONG_OPTION_CHARS)) opts.dataset.long = '';
     this.buttons = q.options.map((text, i) => {
       const b = document.createElement('button');
       b.type = 'button';
@@ -233,11 +263,18 @@ export class QuestionPanel {
     const prompt = card.querySelector<HTMLElement>('.quiz__prompt');
     if (!task || !prompt) return;
     const { fontMaxPx, fontMinPx } = this.timings;
+    const instruction = card.querySelector<HTMLElement>('.quiz__instruction');
+    const cs = getComputedStyle(task);
+    const room =
+      task.clientHeight -
+      parseFloat(cs.paddingTop || '0') -
+      parseFloat(cs.paddingBottom || '0') -
+      (instruction ? instruction.offsetHeight + parseFloat(cs.rowGap || '0') : 0);
     let size = fontMaxPx;
     prompt.style.fontSize = `${size}px`;
     while (
       size > fontMinPx &&
-      (prompt.scrollWidth > task.clientWidth + 1 || prompt.scrollHeight > task.clientHeight + 1)
+      (prompt.scrollWidth > task.clientWidth + 1 || prompt.scrollHeight > room + 1)
     ) {
       size -= 1;
       prompt.style.fontSize = `${size}px`;

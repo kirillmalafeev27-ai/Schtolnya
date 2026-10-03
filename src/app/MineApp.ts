@@ -19,6 +19,7 @@ import { applyPageLayout, computePageLayout, type PageLayout } from '../shared/l
 import { comicLightRenderNodes, filtersSupported } from '../shared/ComicLightFilter';
 import { PaceTracker } from '../shared/pace';
 import { QuestionPanel } from '../shared/QuestionPanel';
+import { GRAMMAR_TOPICS, LANGUAGE_LEVELS, QuizBankProvider } from '../shared/questions/QuizBankProvider';
 import type { QuestionProvider } from '../shared/questions/types';
 import { GearWidget } from '../ui/GearWidget';
 import { iconBoot, iconDynamite, iconPalm, iconPause, iconReady, iconShield, iconWait } from '../ui/icons';
@@ -159,6 +160,11 @@ export class MineApp {
       return ctrl.answer(r.correct, r.timeMs);
     };
     this.panel.setHeader(iconWait, ru.answer.intro);
+    if (options.questions instanceof QuizBankProvider) {
+      options.questions.onStatus = () => this.settingsScreen?.setLearningStatus(this.quizBank!.status);
+      // Пока генерация не ответила, показан запасной вопрос; первый пакет по теме его сменяет.
+      options.questions.onFirstBatch = () => void this.panel.reload();
+    }
 
     this.gear = new GearWidget(this.worldPanel, {
       onHome: () => this.ctrl?.setIntent('home'),
@@ -360,17 +366,36 @@ export class MineApp {
 
   // ───────────── настройки (11.5.6) ─────────────
 
+  /** Генерируемые вопросы See Escape, если игра запущена с ними (автономная страница). */
+  private get quizBank(): QuizBankProvider | null {
+    return this.options.questions instanceof QuizBankProvider ? this.options.questions : null;
+  }
+
   openSettings(): void {
     this.settingsScreen?.destroy();
-    this.settingsScreen = new SettingsScreen(this.screens, this.store.settings, {
-      onChange: (patch) => this.applySettings(patch),
-      onClose: () => {
-        this.settingsScreen?.destroy();
-        this.settingsScreen = null;
-        const focus = this.screens.querySelector<HTMLButtonElement>('.pause__resume, .menu__play');
-        focus?.focus({ preventScroll: true });
+    const bank = this.quizBank;
+    this.settingsScreen = new SettingsScreen(
+      this.screens,
+      this.store.settings,
+      {
+        onChange: (patch) => this.applySettings(patch),
+        onClose: () => {
+          this.settingsScreen?.destroy();
+          this.settingsScreen = null;
+          const focus = this.screens.querySelector<HTMLButtonElement>('.pause__resume, .menu__play');
+          focus?.focus({ preventScroll: true });
+        },
       },
-    });
+      bank
+        ? {
+            settings: bank.settings,
+            levels: LANGUAGE_LEVELS,
+            grammarTopics: GRAMMAR_TOPICS,
+            status: bank.status,
+            onChange: (patch) => bank.configure(patch),
+          }
+        : undefined,
+    );
   }
 
   private applySettings(patch: Partial<Settings>): void {
