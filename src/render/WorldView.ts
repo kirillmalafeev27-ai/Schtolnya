@@ -209,24 +209,37 @@ export class WorldView {
     }
   }
 
-  /** Копоть и обломки на месте взрыва — поверх пола (7.5.1). */
-  addScorch(i: number): void {
+  /**
+   * Обломки на месте взрыва (7.5.1): низкая кучка у нижней кромки клетки. Клетка после взрыва —
+   * проход, поэтому середина остаётся чистой: ни копоти, ни разброса камней по пути героя.
+   * Если снизу блок, кучка лежит на его выступе (он заходит в клетку на четверть).
+   */
+  addRubblePile(i: number): void {
     const g = this.g;
+    const below = i + g.w;
+    const blockBelow = below < g.cells.length && this.blockKey(below) !== null;
     const x = cellX(g, i);
-    const y = cellY(g, i) + CELL * 0.08;
-    const sc = this.img(x, y, ART.scorch, this.layers.floor).setAlpha(0.85);
-    sc.setRotation((this.decor.variants[i] / 251) * Math.PI);
-    const n = 4 + (this.decor.variants[i] % 3);
-    for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2 + this.decor.variants[i];
-      const r = CELL * (0.18 + ((k * 37) % 10) / 40);
-      this.img(
-        x + Math.cos(a) * r,
-        y + Math.sin(a) * r * 0.6,
+    const y = baseY(g, i) - CELL * (blockBelow ? BLOCK_H - 1 : 0.04);
+    const v = this.decor.variants[i];
+    // Крупный камень в середине, поменьше по бокам, мелкий сверху; зеркалится по варианту клетки.
+    const side = v % 2 ? 1 : -1;
+    const pieces = [
+      { dx: 0, dy: 0, s: 1 },
+      { dx: -0.17, dy: 0.01, s: 0.8 },
+      { dx: 0.18, dy: 0.01, s: 0.72 },
+      { dx: -0.05, dy: -0.07, s: 0.6 },
+      { dx: 0.31, dy: 0.02, s: 0.42 },
+    ].slice(0, 4 + (v % 2));
+    pieces.forEach((p, k) => {
+      const im = this.img(
+        x + p.dx * side * CELL,
+        y + p.dy * CELL,
         ART.rubble((i + k) % DEBRIS_VARIANTS),
         this.layers.floor,
-      ).setRotation(a);
-    }
+      ).setOrigin(0.5, 0.82);
+      im.setScale(this.texScale * p.s, this.texScale * p.s * 0.78);
+      im.setRotation((((v + k * 53) % 9) - 4) * 0.06);
+    });
   }
 
   // ───────────── предметы ─────────────

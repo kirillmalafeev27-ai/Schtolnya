@@ -482,6 +482,9 @@ export class GameScene extends Phaser.Scene {
     const g = s.grid;
     const reduced = v.juice.reduced;
     let refresh = false;
+    // Сначала новое состояние: правила копируют сетку на каждый ход, и со старой копией
+    // refreshCell перерисовывал взорванную породу той же породой — проход выглядел завалом.
+    v.world.setState(s);
     for (const e of events) {
       this.opts.onEvent?.(e, s, this);
       switch (e.type) {
@@ -521,7 +524,7 @@ export class GameScene extends Phaser.Scene {
         }
         case 'ROCK_DESTROYED':
           v.world.refreshCell(e.cell);
-          v.world.addScorch(e.cell);
+          v.world.addRubblePile(e.cell);
           v.lights.refreshMask(s);
           break;
         case 'ROCK_CRACKED':
@@ -643,7 +646,6 @@ export class GameScene extends Phaser.Scene {
         v.world.addItem(it, true);
       }
     }
-    v.world.setState(s);
     v.hero.syncBelt(s.hero.sticks, s.hero.hasVein);
     if (refresh) this.refreshHints();
   }
