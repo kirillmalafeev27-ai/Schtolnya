@@ -50,6 +50,50 @@ const MIME = new Map([
 const COMPRESSIBLE = new Set([".html", ".js", ".css", ".json", ".svg"]);
 const LARGE_ASSET = new Set([".glb", ".gltf", ".bin", ".jpg", ".jpeg", ".png", ".webp", ".woff", ".woff2"]);
 
+// Сжатое тело файла считается один раз и живёт в памяти. Бандл игры — один файл на 1,6 МБ,
+// а brotli с качеством по умолчанию (11) сжимал его заново на каждый запрос: 3 с на быстром
+// ядре и десятки секунд на маленьком инстансе Northflank — всё это время страница пустая.
+// Качество 5 сжимает тот же бандл за десятки миллисекунд и почти так же плотно, как gzip -9.
+const BROTLI_OPTIONS = { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } };
+const compressedCache = new Map();
+
+function compressedBody(filePath, stat, encoding) {
+  const key = `${encoding}:${filePath}`;
+  const cached = compressedCache.get(key);
+  if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.body;
+  const body = fs.promises.readFile(filePath).then(
+    (raw) =>
+      new Promise((resolve, reject) => {
+        const done = (error, out) => (error ? reject(error) : resolve(out));
+        if (encoding === "br") zlib.brotliCompress(raw, BROTLI_OPTIONS, done);
+        else zlib.gzip(raw, done);
+      })
+  );
+  compressedCache.set(key, { mtimeMs: stat.mtimeMs, size: stat.size, body });
+  body.catch(() => compressedCache.delete(key));
+  return body;
+}
+
+/** Сжать всю сборку заранее, чтобы и первый игрок после деплоя не ждал. */
+function warmCompressedCache(dir) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const filePath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      warmCompressedCache(filePath);
+      continue;
+    }
+    if (!COMPRESSIBLE.has(path.extname(entry.name).toLowerCase())) continue;
+    const stat = fs.statSync(filePath);
+    for (const encoding of ["br", "gzip"]) compressedBody(filePath, stat, encoding).catch(() => {});
+  }
+}
+
 function send(res, status, body, headers = {}) {
   if (res.writableEnded) return;
   res.writeHead(status, headers);
@@ -208,22 +252,35 @@ function serveFile(req, res, filePath) {
       return;
     }
 
-    const stream = fs.createReadStream(filePath);
     const accepts = String(req.headers["accept-encoding"] || "");
-    if (COMPRESSIBLE.has(ext) && /\bbr\b/.test(accepts)) {
-      const compressedHeaders = { ...headers, "Content-Encoding": "br", Vary: "Accept-Encoding" };
-      delete compressedHeaders["Content-Length"];
-      res.writeHead(200, compressedHeaders);
-      stream.pipe(zlib.createBrotliCompress()).pipe(res);
-    } else if (COMPRESSIBLE.has(ext) && /\bgzip\b/.test(accepts)) {
-      const compressedHeaders = { ...headers, "Content-Encoding": "gzip", Vary: "Accept-Encoding" };
-      delete compressedHeaders["Content-Length"];
-      res.writeHead(200, compressedHeaders);
-      stream.pipe(zlib.createGzip()).pipe(res);
-    } else {
-      res.writeHead(200, headers);
-      stream.pipe(res);
+    const encoding = !COMPRESSIBLE.has(ext)
+      ? ""
+      : /\bbr\b/.test(accepts)
+        ? "br"
+        : /\bgzip\b/.test(accepts)
+          ? "gzip"
+          : "";
+    if (encoding) {
+      compressedBody(filePath, stat, encoding).then(
+        (body) => {
+          send(res, 200, body, {
+            ...headers,
+            "Content-Encoding": encoding,
+            "Content-Length": body.length,
+            Vary: "Accept-Encoding",
+          });
+        },
+        () => {
+          if (res.headersSent) res.destroy();
+          else send(res, 500, "Internal server error");
+        }
+      );
+      return;
     }
+
+    const stream = fs.createReadStream(filePath);
+    res.writeHead(200, headers);
+    stream.pipe(res);
     stream.on("error", () => {
       if (!res.headersSent) send(res, 500, "Internal server error");
       else res.destroy();
@@ -264,6 +321,7 @@ console.log(
 if (!fs.existsSync(path.join(publicDir, "index.html"))) {
   console.warn("dist/index.html is missing — run `npm run build` before `npm start`.");
 }
+warmCompressedCache(publicDir);
 
 PORTS.forEach((port, index) => {
   const server = http.createServer(requestHandler);
