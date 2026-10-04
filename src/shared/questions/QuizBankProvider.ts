@@ -1,7 +1,9 @@
 // Генерируемые вопросы из See Escape (public/js/learning.js, класс QuestionBank, режим grammar):
 // те же уровни и темы, тот же запрос к /api/generate-questions (quiz-generation.cjs) и тот же
-// пул с исключением уже показанных заданий. Если генерация не настроена или не ответила,
-// вопросы берутся из запасного поставщика — локального банка игры.
+// пул с исключением уже показанных заданий. Как в See Escape, к модели не обращаются, пока
+// игрок не начал игру (prepare), а невыданный остаток пула сохраняется в localStorage на сутки
+// и после перезагрузки отдаётся без нового запроса. Если генерация не настроена или не
+// ответила, вопросы берутся из запасного поставщика — локального банка игры.
 
 import type { AnswerReport, Question, QuestionProvider } from './types';
 
@@ -131,6 +133,9 @@ interface RawQuestion {
 }
 
 const STORAGE_KEY = 'schtolnya.learning.v1';
+const POOL_STORAGE_KEY = 'schtolnya.quiz.pool.v1';
+/** Снимок пула годен сутки и только для тех же уровня и тем (как в See Escape). */
+const POOL_SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_GRAMMAR_TOPIC = 'Präsens';
 const DEFAULT_SETTINGS: QuizSettings = {
   level: 'A2',
@@ -142,8 +147,13 @@ const REQUEST_COUNT = 10;
 const LOW_WATER = 3;
 /** Сколько последних заданий уходит в exclude (как в See Escape). */
 const EXCLUDE_LAST = 12;
-/** После неудачного запроса генерация не дёргается чаще, чем раз в столько миллисекунд. */
+/**
+ * После неудачного запроса генерация ждёт столько миллисекунд, а каждая следующая неудача подряд —
+ * вдвое дольше, до потолка; первый успех сбрасывает паузу. Недоступный или исчерпанный провайдер
+ * отвечает так же быстро, как здоровый, и ровный повтор превращал бы сбой в капель платных попыток.
+ */
 const RETRY_AFTER_MS = 15_000;
+const RETRY_CEILING_MS = 120_000;
 const CONFIGURE_SETTLE_MS = 700;
 
 function shuffle<T>(items: readonly T[]): T[] {
@@ -197,6 +207,36 @@ function saveSettings(settings: QuizSettings): void {
   }
 }
 
+function settingsSignature(settings: QuizSettings): string {
+  return [settings.level, settings.lexicalTopic, settings.grammarTopic].join('|');
+}
+
+function loadPoolSnapshot(settings: QuizSettings): RawQuestion[] {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(POOL_STORAGE_KEY) || '{}') as {
+      signature?: string;
+      savedAt?: number;
+      questions?: unknown[];
+    };
+    if (saved.signature !== settingsSignature(settings)) return [];
+    if (Date.now() - Number(saved.savedAt || 0) > POOL_SNAPSHOT_TTL_MS) return [];
+    return Array.isArray(saved.questions) ? saved.questions.filter(validRawQuestion) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePoolSnapshot(settings: QuizSettings, questions: RawQuestion[]): void {
+  try {
+    window.localStorage.setItem(
+      POOL_STORAGE_KEY,
+      JSON.stringify({ signature: settingsSignature(settings), savedAt: Date.now(), questions }),
+    );
+  } catch {
+    // Приватный режим или квота — пул просто не переживёт перезагрузку.
+  }
+}
+
 export interface QuizBankOptions {
   /** false — только запасной банк (сквозные тесты, автономная страница без сервера). */
   generation: boolean;
@@ -215,23 +255,39 @@ export class QuizBankProvider implements QuestionProvider {
   onFirstBatch: () => void = () => {};
 
   private generationConfigured = false;
-  private pool: RawQuestion[] = [];
+  /** Как generationAllowed в See Escape: до начала игры к модели не обращаемся. */
+  private generationAllowed = false;
+  private pool: RawQuestion[];
   private fetching: Promise<void> | null = null;
-  private failedAt = -Infinity;
+  private retryAt = 0;
+  private retryDelay = RETRY_AFTER_MS;
   private usedDisplays: string[] = [];
   private readonly issued = new Map<string, RawQuestion>();
   private serial = 0;
   private epoch = 0;
   /** Уровень и тему часто меняют подряд: запрос уходит, когда выбор устоялся, а не на каждый щелчок. */
   private configureTimer = 0;
-  private awaitingFirstBatch = true;
+  private awaitingFirstBatch: boolean;
 
   constructor(
     private readonly fallback: QuestionProvider,
     private readonly opts: QuizBankOptions,
   ) {
+    // Остаток, оплаченный в прошлый раз, отдаётся сразу и без запроса.
+    this.pool = opts.generation ? loadPoolSnapshot(this.settings) : [];
+    this.awaitingFirstBatch = this.pool.length === 0;
     this.status = opts.generation ? 'checking' : 'fallback';
     if (opts.generation) void this.checkStatus();
+  }
+
+  /**
+   * Игрок начал игру (prepareForGame в See Escape): с этого момента пул пополняется.
+   * В меню и настройках запросов к модели нет.
+   */
+  prepare(): void {
+    if (this.generationAllowed) return;
+    this.generationAllowed = true;
+    void this.ensurePool();
   }
 
   /** Сменить уровень или тему: пул сгенерированных вопросов сбрасывается. */
@@ -249,7 +305,7 @@ export class QuizBankProvider implements QuestionProvider {
     this.usedDisplays = [];
     this.issued.clear();
     this.fetching = null;
-    this.failedAt = -Infinity;
+    this.retryAt = 0;
     this.awaitingFirstBatch = true;
     clearTimeout(this.configureTimer);
     this.configureTimer = window.setTimeout(() => {
@@ -269,7 +325,9 @@ export class QuizBankProvider implements QuestionProvider {
     if (!raw) return this.fallback.next();
     this.usedDisplays.push(raw.display);
     if (this.usedDisplays.length > 60) this.usedDisplays.splice(0, this.usedDisplays.length - 60);
-    return Promise.resolve(this.format(raw));
+    const question = this.format(raw);
+    this.persist();
+    return Promise.resolve(question);
   }
 
   report(r: AnswerReport): void {
@@ -285,6 +343,7 @@ export class QuizBankProvider implements QuestionProvider {
       const at = Math.min(this.pool.length, this.opts.retryMin - 1 + Math.floor(Math.random() * span));
       this.pool.splice(at, 0, raw);
     }
+    this.persist();
   }
 
   /** Вернуть в пул вопрос, который был выдан, но не показан (как releaseQuestion в See Escape). */
@@ -295,6 +354,16 @@ export class QuizBankProvider implements QuestionProvider {
     this.pool.unshift(raw);
     const i = this.usedDisplays.lastIndexOf(raw.display);
     if (i >= 0) this.usedDisplays.splice(i, 1);
+    this.persist();
+  }
+
+  /**
+   * Сохранить невыданное и выданное, но ещё не отвеченное: после перезагрузки страницы оно
+   * вернётся без нового запроса (saveRestartPoolSnapshot в See Escape).
+   */
+  private persist(): void {
+    if (!this.opts.generation) return;
+    savePoolSnapshot(this.settings, [...this.issued.values(), ...this.pool]);
   }
 
   private format(raw: RawQuestion): Question {
@@ -333,10 +402,11 @@ export class QuizBankProvider implements QuestionProvider {
   }
 
   private ensurePool(): Promise<void> {
-    if (!this.opts.generation || !this.generationConfigured || this.configureTimer) return Promise.resolve();
+    if (!this.opts.generation || !this.generationAllowed || !this.generationConfigured || this.configureTimer)
+      return Promise.resolve();
     if (this.pool.length >= LOW_WATER) return Promise.resolve();
     if (this.fetching) return this.fetching;
-    if (Date.now() - this.failedAt < RETRY_AFTER_MS) return Promise.resolve();
+    if (Date.now() < this.retryAt) return Promise.resolve();
     const epoch = this.epoch;
     const { level, lexicalTopic, grammarTopic } = this.settings;
     this.setStatus('loading');
@@ -359,9 +429,14 @@ export class QuizBankProvider implements QuestionProvider {
         if (epoch !== this.epoch) return;
         const valid = (data.questions ?? []).filter(validRawQuestion);
         const known = new Set([...this.usedDisplays, ...this.pool.map((q) => q.display)]);
-        this.pool.push(...shuffle(valid.filter((q) => !known.has(q.display))));
+        const fresh = valid.filter((q) => !known.has(q.display));
+        // Ответ без новых заданий — тоже неудача: иначе каждый следующий вопрос запрашивал бы снова.
+        if (!fresh.length) throw new Error('no new questions');
+        this.pool.push(...shuffle(fresh));
+        this.persist();
         this.lastError = '';
-        this.failedAt = -Infinity;
+        this.retryAt = 0;
+        this.retryDelay = RETRY_AFTER_MS;
         if (this.awaitingFirstBatch && this.pool.length) {
           this.awaitingFirstBatch = false;
           this.onFirstBatch();
@@ -371,7 +446,8 @@ export class QuizBankProvider implements QuestionProvider {
         if (epoch !== this.epoch) return;
         console.warn('Schtolnya quiz generation fallback:', error);
         this.lastError = error instanceof Error ? error.message : 'generation failed';
-        this.failedAt = Date.now();
+        this.retryAt = Date.now() + this.retryDelay;
+        this.retryDelay = Math.min(this.retryDelay * 2, RETRY_CEILING_MS);
       })
       .finally(() => {
         if (epoch !== this.epoch) return;

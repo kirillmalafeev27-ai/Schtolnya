@@ -297,6 +297,8 @@ export class MineApp {
 
   showLevels(): void {
     if (!this.scene) return;
+    // Игрок идёт играть: пул начинает пополняться, пока он выбирает уровень.
+    this.quizBank?.prepare();
     this.menu?.destroy();
     this.menu = null;
     this.levelsScreen?.destroy();
@@ -548,6 +550,8 @@ export class MineApp {
 
   startLevel(id: number, seed: number = Math.floor(Math.random() * 1e9)): void {
     if (!this.scene) return;
+    // Как в See Escape: генерация начинается с игрой, а не с открытия страницы.
+    this.quizBank?.prepare();
     this.levelId = id;
     this.leaveRound();
     this.closeScreens();
